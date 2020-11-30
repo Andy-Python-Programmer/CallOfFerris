@@ -1,4 +1,4 @@
-use std::{sync::Mutex, process::exit};
+use std::sync::Mutex;
 
 use ggez::{conf::WindowSetup, audio::{SoundSource, Source}, event::{self, EventHandler}};
 use ggez::graphics;
@@ -34,7 +34,7 @@ fn main() {
     }
 }
 
-enum Screen {
+pub enum Screen {
     Menu,
     Play,
     Dead
@@ -49,22 +49,30 @@ pub struct MyGame {
     velocity: f64,
     consolas: graphics::Font,
     #[allow(dead_code)]
-    ferris_dead: Source
+    ferris_dead: Source,
+
+    menu_screen: menu::Menu
 }
 
 impl MyGame {
     pub fn new(ctx: &mut Context) -> Self {
         let ferris_borrow_angry = graphics::Image::new(ctx, "/ferris_borrow_angry.png").unwrap();
         let ferris_planet = graphics::Image::new(ctx, "/ferris_planet.png").unwrap();
+        let consolas = graphics::Font::new(ctx, "/Consolas.ttf").unwrap();
 
         Self {
-            ferris_borrow_fail: ferris_borrow_angry,
+            ferris_borrow_fail: graphics::Image::new(ctx, "/ferris_borrow_angry.png").unwrap(),
             screen: Screen::Menu,
             game: None,
             velocity: 0.0,
             ferris_planet,
-            consolas: graphics::Font::new(ctx, "/Consolas.ttf").unwrap(),
-            ferris_dead: Source::new(ctx, "/dead.mp3").unwrap()
+            consolas,
+            ferris_dead: Source::new(ctx, "/dead.mp3").unwrap(),
+        
+            menu_screen: menu::Menu { 
+                consolas,
+                ferris_borrow_fail: ferris_borrow_angry
+            }
         }
     }
 }
@@ -72,7 +80,7 @@ impl MyGame {
 impl EventHandler for MyGame {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         match self.screen {
-            Screen::Menu => menu::draw(self, ctx),
+            Screen::Menu => self.menu_screen.draw(ctx),
             Screen::Play => {
                 self.velocity += 0.7;
                 self.game.as_mut().unwrap().lock().unwrap().pos_y += self.velocity as f32;
@@ -94,7 +102,7 @@ impl EventHandler for MyGame {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         match self.screen {
-            Screen::Menu => menu::draw(self, ctx),
+            Screen::Menu => self.menu_screen.draw(ctx),
             Screen::Play => {
                 let game_state = self.game.as_ref().unwrap();
 
@@ -115,17 +123,16 @@ impl EventHandler for MyGame {
     ) {
         match self.screen {
             Screen::Menu => {
-                if keycode == KeyCode::Key8 {
-                    exit(0);
-                } else if keycode == KeyCode::Key7 {
-                    self.screen = Screen::Play;
-                    self.game = Some(Mutex::new(
-                        game::Game { 
-                            ferris_borrow_fail: self.ferris_borrow_fail.to_owned(),
-                            pos_y: HEIGHT / 2.0
-                        }
-                    ));
+                let change = self.menu_screen.key_press(keycode);
+
+                if let Some(s) = change {
+                    self.screen = s;
+                    self.game = Some(Mutex::new(game::Game {
+                        ferris_borrow_fail: self.ferris_borrow_fail.to_owned(),
+                        pos_y: HEIGHT / 2.0
+                    }))
                 }
+                
             }
             Screen::Play => {
                 if keycode == KeyCode::Space {
