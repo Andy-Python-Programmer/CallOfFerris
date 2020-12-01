@@ -8,10 +8,12 @@ mod menu;
 mod game;
 mod dead;
 
-const WIDTH: f32 = 800.0;
+const WIDTH: f32 = 1000.0;
 const HEIGHT: f32 = 600.0;
 
 fn main() {
+    // The resources directory contains all of the assets.
+    // Including sprites and audio files.
     let resource_dir = std::path::PathBuf::from("./resources");
 
     // Make a Context and an EventLoop.
@@ -71,7 +73,8 @@ impl MyGame {
         
             menu_screen: menu::Menu { 
                 consolas,
-                ferris_borrow_fail: ferris_borrow_angry
+                ferris_ninja: ferris_borrow_angry,
+                background: graphics::Image::new(ctx, "/background.png").unwrap()
             }
         }
     }
