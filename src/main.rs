@@ -1,12 +1,14 @@
 use std::sync::Mutex;
 
-use ggez::{conf::WindowSetup, audio::{SoundSource, Source}, event::{self, EventHandler}};
-use ggez::graphics;
+use ggez::{
+    conf::WindowSetup,
+    event::{self, EventHandler},
+};
 use ggez::{conf::WindowMode, event::KeyCode, event::KeyMods, Context, ContextBuilder, GameResult};
 
-mod menu;
-mod game;
 mod dead;
+mod game;
+mod menu;
 
 const WIDTH: f32 = 1000.0;
 const HEIGHT: f32 = 600.0;
@@ -39,43 +41,24 @@ fn main() {
 pub enum Screen {
     Menu,
     Play,
-    Dead
+    Dead,
 }
 
 pub struct MyGame {
-    ferris_borrow_fail: graphics::Image,
-    #[allow(dead_code)]
-    ferris_planet: graphics::Image,
     screen: Screen,
-    game: Option<Mutex<game::Game>>,
-    velocity: f64,
-    consolas: graphics::Font,
-    #[allow(dead_code)]
-    ferris_dead: Source,
-
-    menu_screen: menu::Menu
+    menu_screen: menu::Menu,
+    game_screen: Mutex<game::Game>,
+    death_screen: dead::Death,
 }
 
 impl MyGame {
     pub fn new(ctx: &mut Context) -> Self {
-        let ferris_borrow_angry = graphics::Image::new(ctx, "/ferris_borrow_angry.png").unwrap();
-        let ferris_planet = graphics::Image::new(ctx, "/ferris_planet.png").unwrap();
-        let consolas = graphics::Font::new(ctx, "/Consolas.ttf").unwrap();
-
         Self {
-            ferris_borrow_fail: graphics::Image::new(ctx, "/ferris_borrow_angry.png").unwrap(),
             screen: Screen::Menu,
-            game: None,
-            velocity: 0.0,
-            ferris_planet,
-            consolas,
-            ferris_dead: Source::new(ctx, "/dead.mp3").unwrap(),
-        
-            menu_screen: menu::Menu { 
-                consolas,
-                ferris_ninja: ferris_borrow_angry,
-                background: graphics::Image::new(ctx, "/background.png").unwrap()
-            }
+
+            menu_screen: menu::Menu::create(ctx),
+            game_screen: game::Game::create(ctx),
+            death_screen: dead::Death::spawn(ctx),
         }
     }
 }
@@ -84,36 +67,20 @@ impl EventHandler for MyGame {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         match self.screen {
             Screen::Menu => self.menu_screen.draw(ctx),
-            Screen::Play => {
-                self.velocity += 0.7;
-                self.game.as_mut().unwrap().lock().unwrap().pos_y += self.velocity as f32;
-
-                if self.game.as_ref().unwrap().lock().unwrap().pos_y > HEIGHT {
-                    self.screen = Screen::Dead;
-                    self.ferris_dead.play().unwrap();
-                }
-                
-                let game_state = self.game.as_ref().unwrap();
-
-                game::draw(&game_state.lock().unwrap(), ctx)
-            },
-            Screen::Dead => {
-                dead::draw(self, ctx)
-            }
+            Screen::Play => self
+                .game_screen
+                .lock()
+                .unwrap()
+                .update(ctx),
+            Screen::Dead => self.death_screen.draw(ctx),
         }
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         match self.screen {
             Screen::Menu => self.menu_screen.draw(ctx),
-            Screen::Play => {
-                let game_state = self.game.as_ref().unwrap();
-
-                game::draw(&game_state.lock().unwrap(), ctx)
-            },
-            Screen::Dead => {
-                dead::draw(self, ctx)
-            }
+            Screen::Play => self.game_screen.lock().unwrap().draw(ctx),
+            Screen::Dead => self.death_screen.draw(ctx),
         }
     }
 
@@ -130,21 +97,20 @@ impl EventHandler for MyGame {
 
                 if let Some(s) = change {
                     self.screen = s;
-                    self.game = Some(Mutex::new(game::Game {
-                        ferris_borrow_fail: self.ferris_borrow_fail.to_owned(),
-                        pos_y: HEIGHT / 2.0
-                    }))
                 }
-                
             }
             Screen::Play => {
-                if keycode == KeyCode::Space {
-                   self.velocity += -12.0;
-                }
-            },
-            Screen::Dead => {
+                let change = self
+                    .game_screen
+                    .lock()
+                    .unwrap()
+                    .key_press(keycode);
 
+                if let Some(s) = change {
+                    self.screen = s;
+                }
             }
+            Screen::Dead => {}
         }
     }
 }

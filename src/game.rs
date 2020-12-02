@@ -1,25 +1,50 @@
-use ggez::{Context, GameResult, graphics};
+use std::sync::Mutex;
 
-#[allow(dead_code)]
+use ggez::{Context, GameResult, audio::Source, event::KeyCode, audio::SoundSource, graphics};
 
-const WIDTH: f32 = crate::WIDTH;
-#[allow(dead_code)]
-
-const HEIGHT: f32 = crate::HEIGHT;
+use crate::WIDTH;
+use crate::HEIGHT;
 
 pub struct Game {
-	pub ferris_borrow_fail: graphics::Image,
-	pub pos_y: f32,
+    pub ferris_ninja: graphics::Image,
+    pub ferris_death_audio: Source, 
+    pub pos_y: f32,
 }
 
-pub fn draw(game_state: &Game, ctx: &mut Context) -> GameResult<()> {
-	graphics::clear(ctx, graphics::BLACK);
-	
-	graphics::draw(
-		ctx,
-		&game_state.ferris_borrow_fail,
-		(ggez::nalgebra::Point2::new((WIDTH / 2.0) - 80.0, game_state.pos_y),),
-	).unwrap();
+impl Game {
+    pub fn create(ctx: &mut Context) -> Mutex<Self> {
+        Mutex::new(
+            Self {
+                ferris_ninja: graphics::Image::new(ctx, "/ferris_ninja.png").unwrap(),
+                ferris_death_audio: Source::new(ctx, "/dead.mp3").unwrap(),
+                pos_y: 10.0
+            }
+        )
+    }
 
-	graphics::present(ctx)
+    pub fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
+        graphics::clear(ctx, graphics::BLACK);
+
+        graphics::draw(
+            ctx,
+            &self.ferris_ninja,
+            (ggez::nalgebra::Point2::new(
+                (WIDTH / 2.0) - 80.0,
+                self.pos_y,
+            ),),
+        )
+        .unwrap();
+
+        graphics::present(ctx)
+    }
+
+    pub fn update(&self, _ctx: &mut Context) -> GameResult<()> {
+        Ok(())
+    }
+
+    pub fn key_press(&mut self, _keycode: KeyCode) -> Option<crate::Screen> {
+        self.ferris_death_audio.play().expect("Cannot play the sad violin.");
+
+        None
+    }
 }
