@@ -1,6 +1,9 @@
 use std::sync::Mutex;
 
-use ggez::{Context, graphics::DrawParam, GameResult, audio::SoundSource, audio::Source, event::KeyCode, graphics, timer};
+use ggez::{
+    audio::SoundSource, audio::Source, event::KeyCode, graphics, graphics::DrawParam, timer,
+    Context, GameResult,
+};
 use rand::Rng;
 
 use crate::HEIGHT;
@@ -17,7 +20,7 @@ pub enum Direction {
 #[derive(PartialEq)]
 pub enum AppleType {
     Referenced,
-    Dereferenced
+    Dereferenced,
 }
 
 pub struct Game {
@@ -72,7 +75,6 @@ impl Game {
                     pos_x as f32,
                     pos_y as f32,
                 ));
-            
             } else {
                 food_vector.push((
                     AppleType::Dereferenced,
@@ -95,7 +97,7 @@ impl Game {
             ferris_direction: Direction::Right,
 
             points: 0,
-            hp: 50,
+            hp: 40,
 
             food: food_vector,
         })
@@ -105,15 +107,7 @@ impl Game {
         graphics::clear(ctx, graphics::BLACK);
 
         for food in self.food.iter() {
-            graphics::draw(
-                ctx,
-                &food.1,
-                (ggez::nalgebra::Point2::new(
-                    food.2,
-                    food.3,
-                ),),
-            )
-            .unwrap();
+            graphics::draw(ctx, &food.1, (ggez::nalgebra::Point2::new(food.2, food.3),)).unwrap();
         }
 
         let hp_pos_y;
@@ -124,62 +118,43 @@ impl Game {
             &self.ferris_pacman,
             DrawParam::default()
                 .dest(ggez::nalgebra::Point2::new(
-                        self.ferris_pos.0,
-                        self.ferris_pos.1,
-                    )
-                )
-                .rotation(
-                    if self.ferris_direction == Direction::Up {
-                        hp_pos_y = self.ferris_pos.1 + 10.0;
-                        hp_pos_x =  self.ferris_pos.0 - 20.0;
-                        
-                        80.0
-                    }
+                    self.ferris_pos.0,
+                    self.ferris_pos.1,
+                ))
+                .rotation(if self.ferris_direction == Direction::Up {
+                    hp_pos_y = self.ferris_pos.1 + 10.0;
+                    hp_pos_x = self.ferris_pos.0 - 20.0;
 
-                    else if self.ferris_direction == Direction::Down {
-                        hp_pos_y = self.ferris_pos.1 - 50.0;
-                        hp_pos_x =  self.ferris_pos.0 - 80.0;
-                        
-                        -80.0
-                    }
+                    80.0
+                } else if self.ferris_direction == Direction::Down {
+                    hp_pos_y = self.ferris_pos.1 - 50.0;
+                    hp_pos_x = self.ferris_pos.0 - 80.0;
 
-                    else if self.ferris_direction == Direction::Left {
-                        hp_pos_y = self.ferris_pos.1 - 100.0;
-                        hp_pos_x =  self.ferris_pos.0 - 80.0;
-                        
-                        160.0
-                    }
+                    -80.0
+                } else if self.ferris_direction == Direction::Left {
+                    hp_pos_y = self.ferris_pos.1 - 100.0;
+                    hp_pos_x = self.ferris_pos.0 - 80.0;
 
-                    else {
-                        hp_pos_y = self.ferris_pos.1 - 50.0;
-                        hp_pos_x =  self.ferris_pos.0 - 20.0;
+                    160.0
+                } else {
+                    hp_pos_y = self.ferris_pos.1 - 50.0;
+                    hp_pos_x = self.ferris_pos.0 - 20.0;
 
-                        0.0
-                    }
-                )
+                    0.0
+                }),
         )?;
 
         let hp_rect_full = graphics::Mesh::new_rectangle(
             ctx,
             graphics::DrawMode::fill(),
-            graphics::Rect::new(
-                hp_pos_x,
-                hp_pos_y,
-                100.0,
-                20.0,
-            ),
+            graphics::Rect::new(hp_pos_x, hp_pos_y, 100.0, 20.0),
             [1.0, 0.0, 0.0, 1.0].into(),
         )?;
 
         let hp_rect_cur = graphics::Mesh::new_rectangle(
             ctx,
             graphics::DrawMode::fill(),
-            graphics::Rect::new(
-                hp_pos_x,
-                hp_pos_y,
-                self.hp as f32,
-                20.0,
-            ),
+            graphics::Rect::new(hp_pos_x, hp_pos_y, self.hp as f32, 20.0),
             [0.0, 1.0, 0.0, 1.0].into(),
         )?;
 
@@ -189,7 +164,7 @@ impl Game {
         graphics::present(ctx)
     }
 
-    pub fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
+    pub fn update(&mut self, ctx: &mut Context) -> GameResult<Option<crate::Screen>> {
         if timer::ticks(ctx) % 6 == 0 {
             if self.ferris_pacman == self.ferris_pacman_collection[0] {
                 self.ferris_pacman = self.ferris_pacman_collection[1].to_owned();
@@ -203,19 +178,24 @@ impl Game {
                 if apple.2 == self.ferris_pos.0 && apple.3 == self.ferris_pos.1 {
                     if apple.0 == AppleType::Referenced {
                         self.points += 1;
-                        
+
                         if self.hp != 100 {
                             self.hp += 20;
                         }
 
                         self.food.remove(i);
-                    }
-
-                    else {
+                    } else {
                         self.points -= 1;
 
                         if self.hp - 20 != 0 {
                             self.hp -= 20;
+                        }
+
+                        else {
+                            self.hp = 0;
+                            self.ferris_death_audio.play()?;
+
+                            return Ok(Some(crate::Screen::Dead));
                         }
 
                         self.food.remove(i);
@@ -244,7 +224,13 @@ impl Game {
             self.ferris_pos.1 = HEIGHT;
         }
 
-        Ok(())
+        if self.hp == 0 {
+            self.ferris_death_audio.play()?;
+
+            return Ok(Some(crate::Screen::Dead));
+        }
+
+        Ok(None)
     }
 
     pub fn key_press(&mut self, keycode: KeyCode) -> Option<crate::Screen> {
