@@ -6,20 +6,20 @@ use ggez::{
 
 pub struct Death {
     consolas: graphics::Font,
-    ferris_planet: graphics::Image
+    ferris_planet: graphics::Image,
 }
 
 impl Death {
     pub fn spawn(ctx: &mut Context) -> Self {
         Self {
             consolas: graphics::Font::new(ctx, "/Consolas.ttf").unwrap(),
-            ferris_planet: graphics::Image::new(ctx, "/ferris_planet.png").unwrap()
+            ferris_planet: graphics::Image::new(ctx, "/ferris_planet.png").unwrap(),
         }
     }
 
     pub fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         graphics::clear(ctx, graphics::BLACK);
-    
+
         let dead = Text::new(TextFragment {
             // `TextFragment` stores a string, and optional parameters which will override those
             // of `Text` itself. This allows inlining differently formatted lines, words,
@@ -33,7 +33,7 @@ impl Death {
             // This doesn't do anything at this point; can be used to omit fields in declarations.
             ..Default::default()
         });
-    
+
         let unsafe_dead = Text::new(TextFragment {
             // `TextFragment` stores a string, and optional parameters which will override those
             // of `Text` itself. This allows inlining differently formatted lines, words,
@@ -47,7 +47,7 @@ impl Death {
             // This doesn't do anything at this point; can be used to omit fields in declarations.
             ..Default::default()
         });
-    
+
         let unsafe_dead_block_start = Text::new(TextFragment {
             // `TextFragment` stores a string, and optional parameters which will override those
             // of `Text` itself. This allows inlining differently formatted lines, words,
@@ -61,7 +61,7 @@ impl Death {
             // This doesn't do anything at this point; can be used to omit fields in declarations.
             ..Default::default()
         });
-    
+
         let unsafe_dead_block_func = Text::new(TextFragment {
             // `TextFragment` stores a string, and optional parameters which will override those
             // of `Text` itself. This allows inlining differently formatted lines, words,
@@ -75,7 +75,7 @@ impl Death {
             // This doesn't do anything at this point; can be used to omit fields in declarations.
             ..Default::default()
         });
-    
+
         let unsafe_dead_block_end = Text::new(TextFragment {
             // `TextFragment` stores a string, and optional parameters which will override those
             // of `Text` itself. This allows inlining differently formatted lines, words,
@@ -89,7 +89,7 @@ impl Death {
             // This doesn't do anything at this point; can be used to omit fields in declarations.
             ..Default::default()
         });
-    
+
         graphics::draw(
             ctx,
             &dead,
@@ -98,7 +98,7 @@ impl Death {
                 y: 40.0,
             },),
         )?;
-    
+
         graphics::draw(
             ctx,
             &unsafe_dead,
@@ -107,7 +107,7 @@ impl Death {
                 y: 200.0,
             },),
         )?;
-    
+
         graphics::draw(
             ctx,
             &unsafe_dead_block_start,
@@ -116,7 +116,7 @@ impl Death {
                 y: 200.0,
             },),
         )?;
-    
+
         graphics::draw(
             ctx,
             &unsafe_dead_block_func,
@@ -125,7 +125,7 @@ impl Death {
                 y: 260.0,
             },),
         )?;
-    
+
         graphics::draw(
             ctx,
             &unsafe_dead_block_end,
@@ -134,7 +134,7 @@ impl Death {
                 y: 300.0,
             },),
         )?;
-    
+
         graphics::draw(
             ctx,
             &self.ferris_planet,
@@ -144,7 +144,11 @@ impl Death {
             ),),
         )
         .unwrap();
-    
+
         graphics::present(ctx)
-    }    
+    }
+
+    pub fn update(&self, _ctx: &mut Context) -> GameResult {
+        Ok(())
+    }
 }

@@ -1,10 +1,10 @@
 use std::sync::Mutex;
 
+use ggez::{conf::WindowMode, event::KeyCode, event::KeyMods, Context, ContextBuilder, GameResult};
 use ggez::{
     conf::WindowSetup,
     event::{self, EventHandler},
 };
-use ggez::{conf::WindowMode, event::KeyCode, event::KeyMods, Context, ContextBuilder, GameResult};
 
 mod dead;
 mod game;
@@ -66,13 +66,9 @@ impl MyGame {
 impl EventHandler for MyGame {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         match self.screen {
-            Screen::Menu => self.menu_screen.draw(ctx),
-            Screen::Play => self
-                .game_screen
-                .lock()
-                .unwrap()
-                .update(ctx),
-            Screen::Dead => self.death_screen.draw(ctx),
+            Screen::Menu => self.menu_screen.update(ctx),
+            Screen::Play => self.game_screen.lock().unwrap().update(ctx),
+            Screen::Dead => self.death_screen.update(ctx),
         }
     }
 
@@ -100,11 +96,7 @@ impl EventHandler for MyGame {
                 }
             }
             Screen::Play => {
-                let change = self
-                    .game_screen
-                    .lock()
-                    .unwrap()
-                    .key_press(keycode);
+                let change = self.game_screen.lock().unwrap().key_press(keycode);
 
                 if let Some(s) = change {
                     self.screen = s;

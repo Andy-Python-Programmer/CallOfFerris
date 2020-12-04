@@ -17,7 +17,7 @@ impl Menu {
     pub fn create(ctx: &mut Context) -> Self {
         Self {
             consolas: graphics::Font::new(ctx, "/Consolas.ttf").unwrap(),
-            ferris_ninja: graphics::Image::new(ctx, "/ferris_ninja.png").unwrap()
+            ferris_ninja: graphics::Image::new(ctx, "/ferris_ninja.png").unwrap(),
         }
     }
 
@@ -172,6 +172,10 @@ impl Menu {
         )?;
 
         graphics::present(ctx)
+    }
+
+    pub fn update(&self, _ctx: &mut Context) -> GameResult {
+        Ok(())
     }
 
     pub fn key_press(&self, keycode: KeyCode) -> Option<crate::Screen> {
