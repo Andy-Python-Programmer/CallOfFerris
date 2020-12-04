@@ -13,7 +13,7 @@ mod menu;
 const WIDTH: f32 = 1000.0;
 const HEIGHT: f32 = 600.0;
 
-fn main() {
+fn main() -> GameResult<()> {
     // The resources directory contains all of the assets.
     // Including sprites and audio files.
     let resource_dir = std::path::PathBuf::from("./resources");
@@ -22,19 +22,20 @@ fn main() {
     let (mut ctx, mut event_loop) = ContextBuilder::new("Call of Ferris", "Borrow Checker")
         .add_resource_path(resource_dir)
         .window_mode(WindowMode::default().dimensions(WIDTH, HEIGHT))
-        .window_setup(WindowSetup::default().title("Call of Ferris"))
-        .build()
-        .unwrap();
+        .window_setup(
+            WindowSetup::default()
+                .title("Call of Ferris")
+                .icon("/ferris_pacman_1.png"),
+        )
+        .build()?;
 
     // Create an instance of your event handler.
-    // Usually, you should provide it with the Context object
-    // so it can load resources like images during setup.
     let mut game = MyGame::new(&mut ctx);
 
     // Run!
     match event::run(&mut ctx, &mut event_loop, &mut game) {
-        Ok(_) => println!("Exited cleanly."),
-        Err(e) => println!("Error occured: {}", e),
+        Ok(_) => Ok(println!("Exited cleanly.")),
+        Err(e) => Ok(println!("Error occured: {}", e)),
     }
 }
 

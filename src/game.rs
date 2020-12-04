@@ -189,9 +189,7 @@ impl Game {
 
                         if self.hp - 20 != 0 {
                             self.hp -= 20;
-                        }
-
-                        else {
+                        } else {
                             self.hp = 0;
                             self.ferris_death_audio.play()?;
 
