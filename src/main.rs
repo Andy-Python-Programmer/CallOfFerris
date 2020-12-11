@@ -1,3 +1,5 @@
+// https://www.reddit.com/r/rust/comments/k35yy7/call_of_ferris_ownership_war/
+
 use std::sync::Mutex;
 
 use ggez::{conf::WindowMode, event::KeyCode, event::KeyMods, Context, ContextBuilder, GameResult};
@@ -25,7 +27,7 @@ fn main() -> GameResult<()> {
         .window_setup(
             WindowSetup::default()
                 .title("Call of Ferris")
-                .icon("/ferris_pacman_1.png"),
+                .icon("/images/ferris_pacman_1.png"),
         )
         .build()?;
 

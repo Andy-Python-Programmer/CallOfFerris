@@ -16,8 +16,8 @@ pub struct Menu {
 impl Menu {
     pub fn create(ctx: &mut Context) -> Self {
         Self {
-            consolas: graphics::Font::new(ctx, "/Consolas.ttf").unwrap(),
-            ferris_ninja: graphics::Image::new(ctx, "/ferris_ninja.png").unwrap(),
+            consolas: graphics::Font::new(ctx, "/fonts/Consolas.ttf").unwrap(),
+            ferris_ninja: graphics::Image::new(ctx, "/images/ferris_ninja.png").unwrap(),
         }
     }
 

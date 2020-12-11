@@ -12,8 +12,8 @@ pub struct Death {
 impl Death {
     pub fn spawn(ctx: &mut Context) -> Self {
         Self {
-            consolas: graphics::Font::new(ctx, "/Consolas.ttf").unwrap(),
-            ferris_planet: graphics::Image::new(ctx, "/ferris_planet.png").unwrap(),
+            consolas: graphics::Font::new(ctx, "/fonts/Consolas.ttf").unwrap(),
+            ferris_planet: graphics::Image::new(ctx, "/images/ferris_planet.png").unwrap(),
         }
     }
 

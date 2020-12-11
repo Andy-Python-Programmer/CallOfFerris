@@ -71,14 +71,14 @@ impl Game {
             if apple_type_num % 2 == 0 {
                 food_vector.push((
                     AppleType::Referenced,
-                    graphics::Image::new(ctx, "/apple_reference.png").unwrap(),
+                    graphics::Image::new(ctx, "/images/apple_reference.png").unwrap(),
                     pos_x as f32,
                     pos_y as f32,
                 ));
             } else {
                 food_vector.push((
                     AppleType::Dereferenced,
-                    graphics::Image::new(ctx, "/apple_dereference.png").unwrap(),
+                    graphics::Image::new(ctx, "/images/apple_dereference.png").unwrap(),
                     pos_x as f32,
                     pos_y as f32,
                 ));
@@ -86,11 +86,11 @@ impl Game {
         }
 
         Mutex::new(Self {
-            ferris_death_audio: Source::new(ctx, "/dead.mp3").unwrap(),
-            ferris_pacman: graphics::Image::new(ctx, "/ferris_pacman_1.png").unwrap(),
+            ferris_death_audio: Source::new(ctx, "/audio/dead.mp3").unwrap(),
+            ferris_pacman: graphics::Image::new(ctx, "/images/ferris_pacman_1.png").unwrap(),
             ferris_pacman_collection: vec![
-                graphics::Image::new(ctx, "/ferris_pacman_1.png").unwrap(),
-                graphics::Image::new(ctx, "/ferris_pacman_2.png").unwrap(),
+                graphics::Image::new(ctx, "/images/ferris_pacman_1.png").unwrap(),
+                graphics::Image::new(ctx, "/images/ferris_pacman_2.png").unwrap(),
             ],
 
             ferris_pos: (20.0, 20.0),
