@@ -1,6 +1,4 @@
-<img src="misc/thumbnail.png">
-
-# Call of Ferris ( Ownership War )
+<p align="center"><img src="resources/images/logo.png"></p>
 
 ## Screenshots
 
