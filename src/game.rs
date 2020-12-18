@@ -8,6 +8,7 @@ use ggez::{
 };
 use ggez_goodies::{camera::Camera, nalgebra_glm::Vec2};
 use graphics::{Font, Image, Mesh, TextFragment};
+use rand::Rng;
 
 use crate::{HEIGHT, Screen, WIDTH, components::{bullet::Turbofish, enemy::Enemy, player::Player, tile::{Tile, TileType}}};
 
@@ -27,6 +28,7 @@ pub struct Game {
     ui_resources: Vec<Image>,
 
     camera: Camera,
+    elapsed_shake: Option<(f32, Vec2)>,
 }
 
 impl Game {
@@ -122,6 +124,7 @@ impl Game {
             camera,
 
             consolas: graphics::Font::new(ctx, "/fonts/Consolas.ttf").unwrap(),
+            elapsed_shake: None
         })
     }
 
@@ -222,7 +225,7 @@ impl Game {
 
             let mut done: bool = false;
 
-            for fish in &mut self.player_bullets {
+            for fish in &self.player_bullets {
                 if fish.pos_x >= go_start_x && fish.pos_x <= go_end_x {
                     self.enemies.remove(i);
 
@@ -231,6 +234,12 @@ impl Game {
             }
 
             if done {
+                let cam_loc = self.camera.location();
+                let org_pos = cam_loc.data.as_slice();
+                
+                self.elapsed_shake = Some((0., Vec2::new(org_pos[0], org_pos[1])));
+                self.camera_shakeke();
+
                 break;
             }
         }
@@ -242,6 +251,17 @@ impl Game {
                 self.player_bullets.remove(i);
 
                 break;
+            }
+        }
+
+        if let Some(s) = self.elapsed_shake {
+            if s.0 < 1. {
+                self.camera_shakeke();
+            }
+
+            else {
+                self.camera.move_to(s.1);
+                self.elapsed_shake = None;
             }
         }
 
@@ -268,5 +288,19 @@ impl Game {
         }
 
         None
+    }
+
+    pub fn camera_shakeke(&mut self) {
+        let mut rng = rand::thread_rng();
+    
+        let magnitude = 2.;
+        let elapsed = self.elapsed_shake.unwrap();
+    
+        let x = rng.gen_range(-1.0, 1.0) * magnitude;
+        let y = rng.gen_range(-1.0, 1.0) * magnitude;
+
+        self.camera.move_by(Vec2::new(x, y));
+    
+        self.elapsed_shake = Some((elapsed.0 + 0.1, elapsed.1));
     }
 }
