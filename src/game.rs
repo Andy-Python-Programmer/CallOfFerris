@@ -1,245 +1,217 @@
-use std::sync::Mutex;
+use std::{io::Read, sync::Mutex};
 
 use ggez::{
-    audio::SoundSource, audio::Source, event::KeyCode, graphics, graphics::DrawParam, timer,
+    event::KeyCode,
+    graphics::{self, Color, DrawMode, DrawParam, Scale, Text},
+    nalgebra::Point2,
     Context, GameResult,
 };
-use rand::Rng;
+use ggez_goodies::{camera::Camera, nalgebra_glm::Vec2};
+use graphics::{Font, Image, Mesh, TextFragment};
 
-use crate::HEIGHT;
-use crate::WIDTH;
-
-#[derive(PartialEq)]
-pub enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
-}
-
-#[derive(PartialEq)]
-pub enum AppleType {
-    Referenced,
-    Dereferenced,
-}
+use crate::{
+    components::{
+        enemy::Enemy,
+        player::Player,
+        tile::{Tile, TileType},
+    },
+    HEIGHT, WIDTH,
+};
 
 pub struct Game {
-    pub ferris_death_audio: Source,
-    pub ferris_pacman: graphics::Image,
+    ground: Vec<Tile>,
+    enemies: Vec<Enemy>,
+    player: Player,
 
-    pub ferris_pacman_collection: Vec<graphics::Image>,
+    ground_resources: Vec<Image>,
+    enemy_resources: Vec<Image>,
+    player_resources: Vec<Image>,
 
-    pub ferris_pos: (f32, f32), // X, Y
-    pub ferris_direction: Direction,
-    pub points: i64,
-    pub hp: i32,
+    consolas: Font,
 
-    pub food: Vec<(AppleType, graphics::Image, f32, f32)>, // Type of the apple, Image of the apple, X pos of the apple, Y pos of the apple
+    ui_resources: Vec<Image>,
+
+    camera: Camera,
 }
 
 impl Game {
     pub fn create(ctx: &mut Context) -> Mutex<Self> {
-        let mut food_vector = Vec::new();
-        let mut rng = rand::thread_rng();
+        let mut camera = Camera::new(WIDTH as u32, HEIGHT as u32, WIDTH, HEIGHT);
+        let mut map = ggez::filesystem::open(ctx, "/maps/01.map").unwrap();
 
-        for _i in 0..10 {
-            let apple_type_num = rng.gen_range(0, 10);
+        let mut buffer = String::new();
+        map.read_to_string(&mut buffer).unwrap();
 
-            let pos_x: i64;
-            let pos_y: i64;
+        let mut ground = vec![];
+        let mut enemies = vec![];
+        let mut player = None;
 
-            loop {
-                let gen_x = rng.gen_range(0, WIDTH as i32);
+        let mut draw_pos = 0.;
 
-                if gen_x % 20 == 0 {
-                    pos_x = gen_x.into();
+        let draw_inc = 64.;
 
-                    break;
+        for id in buffer.chars() {
+            match id {
+                '[' => {
+                    ground.push(Tile::new(draw_pos, TileType::LEFT));
+
+                    draw_pos += draw_inc;
                 }
-            }
 
-            loop {
-                let gen_y = rng.gen_range(0, HEIGHT as i32);
+                '-' => {
+                    ground.push(Tile::new(draw_pos, TileType::CENTER));
 
-                if gen_y % 20 == 0 {
-                    pos_y = gen_y.into();
-
-                    break;
+                    draw_pos += draw_inc;
                 }
-            }
 
-            if apple_type_num % 2 == 0 {
-                food_vector.push((
-                    AppleType::Referenced,
-                    graphics::Image::new(ctx, "/images/apple_reference.png").unwrap(),
-                    pos_x as f32,
-                    pos_y as f32,
-                ));
-            } else {
-                food_vector.push((
-                    AppleType::Dereferenced,
-                    graphics::Image::new(ctx, "/images/apple_dereference.png").unwrap(),
-                    pos_x as f32,
-                    pos_y as f32,
-                ));
+                ']' => {
+                    ground.push(Tile::new(draw_pos, TileType::RIGHT));
+
+                    draw_pos += draw_inc;
+                }
+
+                '_' => {
+                    draw_pos += draw_inc;
+                }
+
+                '8' => {
+                    ground.push(Tile::new(draw_pos, TileType::CENTER));
+                    enemies.push(Enemy::new(draw_pos));
+
+                    draw_pos += draw_inc;
+                }
+
+                '4' => {
+                    ground.push(Tile::new(draw_pos, TileType::CENTER));
+                    player = Some(Player::new(draw_pos));
+
+                    draw_pos += draw_inc;
+                }
+
+                _ => {}
             }
         }
 
+        let player = player.expect("No player found!");
+
+        camera.move_to(Vec2::new(player.pos_x, player.pos_y));
+
         Mutex::new(Self {
-            ferris_death_audio: Source::new(ctx, "/audio/dead.mp3").unwrap(),
-            ferris_pacman: graphics::Image::new(ctx, "/images/ferris_pacman_1.png").unwrap(),
-            ferris_pacman_collection: vec![
-                graphics::Image::new(ctx, "/images/ferris_pacman_1.png").unwrap(),
-                graphics::Image::new(ctx, "/images/ferris_pacman_2.png").unwrap(),
+            ground,
+            enemies,
+            player,
+
+            ground_resources: vec![
+                Image::new(ctx, "/images/ground_left.png").unwrap(),
+                Image::new(ctx, "/images/ground_centre.png").unwrap(),
+                Image::new(ctx, "/images/ground_right.png").unwrap(),
             ],
 
-            ferris_pos: (20.0, 20.0),
-            ferris_direction: Direction::Right,
+            enemy_resources: vec![
+                Image::new(ctx, "/images/gopher.png").unwrap(),
+                Image::new(ctx, "/images/Some(gun).png").unwrap(),
+            ],
 
-            points: 0,
-            hp: 40,
+            player_resources: vec![
+                Image::new(ctx, "/images/Some(ferris).png").unwrap(),
+                Image::new(ctx, "/images/Some(sniper).png").unwrap(),
+            ],
 
-            food: food_vector,
+            ui_resources: vec![Image::new(ctx, "/images/Some(ammo).png").unwrap()],
+
+            camera,
+
+            consolas: graphics::Font::new(ctx, "/fonts/Consolas.ttf").unwrap(),
         })
     }
 
     pub fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         graphics::clear(ctx, graphics::BLACK);
 
-        for food in self.food.iter() {
-            graphics::draw(ctx, &food.1, (ggez::nalgebra::Point2::new(food.2, food.3),)).unwrap();
+        // Moon
+        let moon = Mesh::new_circle(
+            ctx,
+            DrawMode::fill(),
+            Point2::new(WIDTH - 40.0, 40.0),
+            25.0,
+            0.001,
+            Color::from_rgb(255, 255, 255),
+        )?;
+
+        graphics::draw(ctx, &moon, DrawParam::default())?;
+
+        // Ground
+        for tile in &mut self.ground {
+            tile.draw(ctx, &self.camera, &self.ground_resources)?;
         }
 
-        let hp_pos_y;
-        let hp_pos_x;
+        // Enemies
+        for enemy in &mut self.enemies {
+            enemy.draw(ctx, &self.camera, &self.enemy_resources)?;
+        }
+
+        // Player
+        self.player
+            .draw(ctx, &self.camera, &self.player_resources)?;
 
         graphics::draw(
             ctx,
-            &self.ferris_pacman,
-            DrawParam::default()
-                .dest(ggez::nalgebra::Point2::new(
-                    self.ferris_pos.0,
-                    self.ferris_pos.1,
-                ))
-                .rotation(if self.ferris_direction == Direction::Up {
-                    hp_pos_y = self.ferris_pos.1 + 10.0;
-                    hp_pos_x = self.ferris_pos.0 - 20.0;
-
-                    80.0
-                } else if self.ferris_direction == Direction::Down {
-                    hp_pos_y = self.ferris_pos.1 - 50.0;
-                    hp_pos_x = self.ferris_pos.0 - 80.0;
-
-                    -80.0
-                } else if self.ferris_direction == Direction::Left {
-                    hp_pos_y = self.ferris_pos.1 - 100.0;
-                    hp_pos_x = self.ferris_pos.0 - 80.0;
-
-                    160.0
-                } else {
-                    hp_pos_y = self.ferris_pos.1 - 50.0;
-                    hp_pos_x = self.ferris_pos.0 - 20.0;
-
-                    0.0
-                }),
+            &self.ui_resources[0],
+            DrawParam::default().dest(Point2::new(10.0, 10.0)),
         )?;
 
-        let hp_rect_full = graphics::Mesh::new_rectangle(
+        let ammo_frag = TextFragment {
+            text: self.player.ammo.to_string(),
+            font: Some(self.consolas),
+            scale: Some(Scale::uniform(30.0)),
+
+            ..Default::default()
+        };
+
+        graphics::draw(
             ctx,
-            graphics::DrawMode::fill(),
-            graphics::Rect::new(hp_pos_x, hp_pos_y, 100.0, 20.0),
-            [1.0, 0.0, 0.0, 1.0].into(),
+            &Text::new(ammo_frag),
+            DrawParam::default().dest(Point2::new(30.0, 25.0)),
         )?;
-
-        let hp_rect_cur = graphics::Mesh::new_rectangle(
-            ctx,
-            graphics::DrawMode::fill(),
-            graphics::Rect::new(hp_pos_x, hp_pos_y, self.hp as f32, 20.0),
-            [0.0, 1.0, 0.0, 1.0].into(),
-        )?;
-
-        graphics::draw(ctx, &hp_rect_full, (ggez::mint::Point2 { x: 0.0, y: 0.0 },))?;
-        graphics::draw(ctx, &hp_rect_cur, (ggez::mint::Point2 { x: 0.0, y: 0.0 },))?;
 
         graphics::present(ctx)
     }
 
-    pub fn update(&mut self, ctx: &mut Context) -> GameResult<Option<crate::Screen>> {
-        if timer::ticks(ctx) % 6 == 0 {
-            if self.ferris_pacman == self.ferris_pacman_collection[0] {
-                self.ferris_pacman = self.ferris_pacman_collection[1].to_owned();
-            } else {
-                self.ferris_pacman = self.ferris_pacman_collection[0].to_owned();
-            }
+    pub fn update(&mut self, _ctx: &mut Context) -> GameResult<Option<crate::Screen>> {
+        let ferris_pos_x = self.player.pos_x;
+        let mut ferris_is_falling_down: bool = true;
 
-            for i in 0..self.food.len() - 1 {
-                let apple = &self.food[i];
+        for tile in &mut self.ground {
+            let tile_start = tile.pos_x;
+            let tile_end = tile.pos_x + 64.;
 
-                if apple.2 == self.ferris_pos.0 && apple.3 == self.ferris_pos.1 {
-                    if apple.0 == AppleType::Referenced {
-                        self.points += 1;
+            if ferris_pos_x >= tile_start && ferris_pos_x <= tile_end {
+                ferris_is_falling_down = false;
 
-                        if self.hp != 100 {
-                            self.hp += 20;
-                        }
-
-                        self.food.remove(i);
-                    } else {
-                        self.points -= 1;
-
-                        if self.hp - 20 != 0 {
-                            self.hp -= 20;
-                        } else {
-                            self.hp = 0;
-                            self.ferris_death_audio.play()?;
-
-                            return Ok(Some(crate::Screen::Dead));
-                        }
-
-                        self.food.remove(i);
-                    }
-                }
-            }
-
-            if self.ferris_direction == Direction::Left {
-                self.ferris_pos.0 -= 20.0;
-            } else if self.ferris_direction == Direction::Right {
-                self.ferris_pos.0 += 20.0;
-            } else if self.ferris_direction == Direction::Up {
-                self.ferris_pos.1 -= 20.0;
-            } else if self.ferris_direction == Direction::Down {
-                self.ferris_pos.1 += 20.0;
+                break;
             }
         }
 
-        if self.ferris_pos.0 > WIDTH {
-            self.ferris_pos.0 = 0.0;
-        } else if self.ferris_pos.0 < 0.0 {
-            self.ferris_pos.0 = WIDTH;
-        } else if self.ferris_pos.1 > HEIGHT {
-            self.ferris_pos.1 = 0.0;
-        } else if self.ferris_pos.1 < 0.0 {
-            self.ferris_pos.1 = HEIGHT;
-        }
+        self.player.update(ferris_is_falling_down);
 
-        if self.hp == 0 {
-            self.ferris_death_audio.play()?;
-
-            return Ok(Some(crate::Screen::Dead));
-        }
+        self.camera
+            .move_to(Vec2::new(self.player.pos_x, self.player.pos_y));
 
         Ok(None)
     }
 
     pub fn key_press(&mut self, keycode: KeyCode) -> Option<crate::Screen> {
-        if keycode == KeyCode::Up {
-            self.ferris_direction = Direction::Up;
-        } else if keycode == KeyCode::Down {
-            self.ferris_direction = Direction::Down;
-        } else if keycode == KeyCode::Left {
-            self.ferris_direction = Direction::Left;
-        } else if keycode == KeyCode::Right {
-            self.ferris_direction = Direction::Right;
+        match keycode {
+            KeyCode::Left => {
+                self.player.pos_x -= 10.;
+            }
+            KeyCode::Right => {
+                self.player.pos_x += 10.;
+            }
+            KeyCode::Space => {
+                self.player.go_boom();
+            }
+            _ => (),
         }
 
         None

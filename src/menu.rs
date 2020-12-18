@@ -1,4 +1,9 @@
-use ggez::{Context, GameResult, event::KeyCode, graphics::{self, Scale, Text, TextFragment}, nalgebra::{Point2, Vector2}};
+use ggez::{
+    event::KeyCode,
+    graphics::{self, Scale, Text, TextFragment},
+    nalgebra::{Point2, Vector2},
+    Context, GameResult,
+};
 use graphics::DrawParam;
 use std::process::exit;
 
@@ -9,7 +14,7 @@ pub struct Menu {
     pub consolas: graphics::Font,
     pub ferris_ninja: graphics::Image,
     pub logo: graphics::Image,
-    pub bg: graphics::Image
+    pub bg: graphics::Image,
 }
 
 impl Menu {
@@ -31,7 +36,7 @@ impl Menu {
             &self.bg,
             DrawParam::default()
                 .dest(Point2::new(0.0, 0.0))
-                .scale(Vector2::new(0.6, 0.5))
+                .scale(Vector2::new(0.6, 0.5)),
         )?;
 
         graphics::draw(
@@ -39,7 +44,7 @@ impl Menu {
             &self.logo,
             (ggez::nalgebra::Point2::new(
                 WIDTH - (self.logo.width() as f32 + 20.0),
-                10.0
+                10.0,
             ),),
         )?;
 

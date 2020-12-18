@@ -12,6 +12,12 @@ mod dead;
 mod game;
 mod menu;
 
+mod components {
+    pub mod enemy;
+    pub mod player;
+    pub mod tile;
+}
+
 const WIDTH: f32 = 1000.0;
 const HEIGHT: f32 = 600.0;
 
