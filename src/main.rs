@@ -16,6 +16,7 @@ mod components {
     pub mod enemy;
     pub mod player;
     pub mod tile;
+    pub mod bullet;
 }
 
 const WIDTH: f32 = 1000.0;

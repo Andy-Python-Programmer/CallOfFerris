@@ -8,7 +8,7 @@ use graphics::Image;
 use crate::HEIGHT;
 
 pub struct Enemy {
-    pos_x: f32,
+    pub pos_x: f32,
 }
 
 impl Enemy {

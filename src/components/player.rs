@@ -6,6 +6,8 @@ use ggez_goodies::{
 
 use crate::HEIGHT;
 
+use super::bullet::Turbofish;
+
 pub struct Player {
     pub pos_x: f32,
     pub pos_y: f32,
@@ -46,7 +48,7 @@ impl Player {
         &resources[1].draw_camera(
             &camera,
             ctx,
-            Vec2::new(self.pos_x - 50., (-HEIGHT2 + 150.) + self.pos_y),
+            Vec2::new(self.pos_x + 30., (-HEIGHT2 + 120.) + self.pos_y),
             0.0,
         );
 
@@ -71,6 +73,20 @@ impl Player {
         if self.pos_y > 0. || gonna_boom {
             self.velocity += self.gravity;
             self.pos_y -= self.velocity;
+        }
+    }
+
+    pub fn shoot(&mut self) -> Option<Turbofish> {
+        const HEIGHT2: f32 = HEIGHT / 2.;
+
+        if self.ammo != 0 {
+            self.ammo -= 1;
+
+            return Some(Turbofish::new(self.pos_x + 220., (-HEIGHT2 + 106.) + self.pos_y));
+        }
+
+        else {
+            None
         }
     }
 }

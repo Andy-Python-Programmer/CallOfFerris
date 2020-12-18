@@ -9,23 +9,18 @@ use ggez::{
 use ggez_goodies::{camera::Camera, nalgebra_glm::Vec2};
 use graphics::{Font, Image, Mesh, TextFragment};
 
-use crate::{
-    components::{
-        enemy::Enemy,
-        player::Player,
-        tile::{Tile, TileType},
-    },
-    HEIGHT, WIDTH,
-};
+use crate::{HEIGHT, Screen, WIDTH, components::{bullet::Turbofish, enemy::Enemy, player::Player, tile::{Tile, TileType}}};
 
 pub struct Game {
     ground: Vec<Tile>,
     enemies: Vec<Enemy>,
+    player_bullets: Vec<Turbofish>,
     player: Player,
 
     ground_resources: Vec<Image>,
     enemy_resources: Vec<Image>,
     player_resources: Vec<Image>,
+    bullet_resources: Vec<Image>,
 
     consolas: Font,
 
@@ -100,6 +95,7 @@ impl Game {
             ground,
             enemies,
             player,
+            player_bullets: vec![],
 
             ground_resources: vec![
                 Image::new(ctx, "/images/ground_left.png").unwrap(),
@@ -115,6 +111,10 @@ impl Game {
             player_resources: vec![
                 Image::new(ctx, "/images/Some(ferris).png").unwrap(),
                 Image::new(ctx, "/images/Some(sniper).png").unwrap(),
+            ],
+
+            bullet_resources: vec![
+                Image::new(ctx, "/images/Some(turbofish).png").unwrap(),
             ],
 
             ui_resources: vec![Image::new(ctx, "/images/Some(ammo).png").unwrap()],
@@ -164,6 +164,15 @@ impl Game {
             text: self.player.ammo.to_string(),
             font: Some(self.consolas),
             scale: Some(Scale::uniform(30.0)),
+            color: {
+                if self.player.ammo > 10 / 2 {
+                    Some(Color::from_rgb(255, 255, 255))
+                }
+
+                else {
+                    Some(Color::from_rgb(255, 80, 76))
+                }
+            },
 
             ..Default::default()
         };
@@ -173,6 +182,10 @@ impl Game {
             &Text::new(ammo_frag),
             DrawParam::default().dest(Point2::new(30.0, 25.0)),
         )?;
+
+        for fish in &mut self.player_bullets {
+            fish.draw(ctx, &self.camera, &self.bullet_resources)?;
+        }
 
         graphics::present(ctx)
     }
@@ -197,6 +210,41 @@ impl Game {
         self.camera
             .move_to(Vec2::new(self.player.pos_x, self.player.pos_y));
 
+        if self.player.pos_y < -800. {
+            return Ok(Some(Screen::Dead));
+        }
+
+        for i in 0..self.enemies.len() {
+            let go = &self.enemies[i];
+
+            let go_start_x = go.pos_x;
+            let go_end_x = go.pos_x + 100.;
+
+            let mut done: bool = false;
+
+            for fish in &mut self.player_bullets {
+                if fish.pos_x >= go_start_x && fish.pos_x <= go_end_x {
+                    self.enemies.remove(i);
+
+                    done = true;
+                }
+            }
+
+            if done {
+                break;
+            }
+        }
+
+        for i in 0..self.player_bullets.len() {
+            let fish = &mut self.player_bullets[i];
+
+            if fish.go_boom() {
+                self.player_bullets.remove(i);
+
+                break;
+            }
+        }
+
         Ok(None)
     }
 
@@ -210,6 +258,11 @@ impl Game {
             }
             KeyCode::Space => {
                 self.player.go_boom();
+            },
+            KeyCode::S => {
+                if let Some(fish) = self.player.shoot() {
+                    self.player_bullets.push(fish);
+                }
             }
             _ => (),
         }
