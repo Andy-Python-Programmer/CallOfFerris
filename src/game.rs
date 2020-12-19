@@ -1,6 +1,6 @@
 use std::{io::Read, sync::Mutex};
 
-use ggez::{Context, GameResult, event::KeyCode, graphics::{self, Color, DrawMode, DrawParam, Scale, Text}, mint, nalgebra::Point2, timer};
+use ggez::{Context, GameResult, audio::{SoundSource, Source}, event::KeyCode, graphics::{self, Color, DrawMode, DrawParam, Scale, Text}, mint, nalgebra::Point2, timer};
 use ggez_goodies::{camera::{Camera, CameraDraw}, nalgebra_glm::Vec2, particle::{EmissionShape, ParticleSystem, ParticleSystemBuilder, Transition}};
 use graphics::{Font, Image, Mesh, TextFragment};
 use rand::Rng;
@@ -21,6 +21,7 @@ pub struct Game {
     consolas: Font,
 
     ui_resources: Vec<Image>,
+    audio_resources: Vec<Source>,
 
     camera: Camera,
     elapsed_shake: Option<(f32, Vec2)>,
@@ -117,6 +118,10 @@ impl Game {
             ],
 
             ui_resources: vec![Image::new(ctx, "/images/Some(ammo).png").unwrap()],
+            audio_resources: vec![
+                Source::new(ctx, "/audio/Some(turbofish_shoot).mp3").unwrap(),
+                Source::new(ctx, "/audio/Some(explode).mp3").unwrap()
+            ],
 
             camera,
 
@@ -269,6 +274,8 @@ impl Game {
                             .build(), go_start_x, -HEIGHT2 + 70., 0)
                     );
 
+                    self.audio_resources[1].play().expect("Cannot play Some(explode).mp3");
+
                     self.enemies.remove(i);
 
                     done = true;
@@ -336,6 +343,8 @@ impl Game {
             },
             KeyCode::S => {
                 if let Some(fish) = self.player.shoot() {
+                    self.audio_resources[0].play().expect("Cannot play Some(turbofish_shoot).mp3");
+                    
                     self.player_bullets.push(fish);
                 }
             },
