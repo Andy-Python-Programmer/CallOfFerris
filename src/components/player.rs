@@ -66,7 +66,9 @@ impl Player {
             
             if self.pos_y < 0. {
                 self.going_boom = false;
+                
                 self.pos_y = 0.;
+                self.velocity = 0.;
             }
         }
         

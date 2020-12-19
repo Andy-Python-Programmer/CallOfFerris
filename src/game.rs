@@ -222,13 +222,15 @@ impl Game {
 
     pub fn inner_update(&mut self, ctx: &mut Context) -> GameResult<Option<crate::Screen>> {
         let ferris_pos_x = self.player.pos_x;
-        let mut ferris_is_falling_down: bool = true;
+        let ferris_pos_y = self.player.pos_y;
+
+        let mut ferris_is_falling_down = true;
 
         for tile in &mut self.ground {
             let tile_start = tile.pos_x;
             let tile_end = tile.pos_x + 64.;
 
-            if ferris_pos_x >= tile_start && ferris_pos_x <= tile_end {
+            if ferris_pos_x >= tile_start && ferris_pos_x <= tile_end && ferris_pos_y + (-HEIGHT / 2.0) - 64. >= (-HEIGHT / 2.0) - 64. || ferris_pos_y == 0. {
                 ferris_is_falling_down = false;
 
                 break;
