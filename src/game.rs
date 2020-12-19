@@ -5,11 +5,13 @@ use ggez_goodies::{camera::{Camera, CameraDraw}, nalgebra_glm::Vec2, particle::{
 use graphics::{Font, Image, Mesh, TextFragment};
 use rand::Rng;
 
-use crate::{HEIGHT, Screen, WIDTH, components::{bullet::Turbofish, enemy::Enemy, player::Player, tile::{Tile, TileType}}};
+use crate::{HEIGHT, Screen, WIDTH, components::{barrel::Barrel, bullet::Turbofish, enemy::Enemy, player::Player, tile::{Tile, TileType}}};
 
 pub struct Game {
     ground: Vec<Tile>,
     enemies: Vec<Enemy>,
+    barrels: Vec<Barrel>,
+
     player_bullets: Vec<Turbofish>,
     player: Player,
 
@@ -17,14 +19,14 @@ pub struct Game {
     enemy_resources: Vec<Image>,
     player_resources: Vec<Image>,
     bullet_resources: Vec<Image>,
+    ui_resources: Vec<Image>,
+    audio_resources: Vec<Source>,
+    barrel_resources: Vec<Image>,
 
     consolas: Font,
 
-    ui_resources: Vec<Image>,
-    audio_resources: Vec<Source>,
-
     camera: Camera,
-    elapsed_shake: Option<(f32, Vec2)>,
+    elapsed_shake: Option<(f32, Vec2, f32)>,
     tics: Option<i32>,
     particles: Vec<(ParticleSystem, f32, f32, i32)>
 }
@@ -39,6 +41,8 @@ impl Game {
 
         let mut ground = vec![];
         let mut enemies = vec![];
+        let mut barrels = vec![];
+
         let mut player = None;
 
         let mut draw_pos = 0.;
@@ -81,6 +85,13 @@ impl Game {
                     player = Some(Player::new(draw_pos));
 
                     draw_pos += draw_inc;
+                },
+
+                '*' => {
+                    ground.push(Tile::new(draw_pos, TileType::CENTER));
+                    barrels.push(Barrel::new(draw_pos));
+
+                    draw_pos += draw_inc;
                 }
 
                 _ => {}
@@ -95,6 +106,8 @@ impl Game {
             ground,
             enemies,
             player,
+            barrels,
+
             player_bullets: vec![],
 
             ground_resources: vec![
@@ -117,7 +130,14 @@ impl Game {
                 Image::new(ctx, "/images/Some(turbofish).png").unwrap(),
             ],
 
-            ui_resources: vec![Image::new(ctx, "/images/Some(ammo).png").unwrap()],
+            ui_resources: vec![
+                Image::new(ctx, "/images/Some(ammo).png").unwrap()
+            ],
+
+            barrel_resources: vec![
+                Image::new(ctx, "/images/Some(barrel).png").unwrap()
+            ],
+
             audio_resources: vec![
                 Source::new(ctx, "/audio/Some(turbofish_shoot).mp3").unwrap(),
                 Source::new(ctx, "/audio/Some(explode).mp3").unwrap()
@@ -155,6 +175,11 @@ impl Game {
         // Enemies
         for enemy in &mut self.enemies {
             enemy.draw(ctx, &self.camera, &self.enemy_resources)?;
+        }
+
+        // Barrel
+        for boom in &mut self.barrels {
+            boom.draw(ctx, &self.camera, &self.barrel_resources)?;
         }
 
         // Player
@@ -254,7 +279,9 @@ impl Game {
 
             let mut done: bool = false;
 
-            for fish in &self.player_bullets {
+            for j in 0..self.player_bullets.len() {
+                let fish = &self.player_bullets[j];
+
                 if fish.pos_x >= go_start_x && fish.pos_x <= go_end_x {
                     const HEIGHT2: f32 = HEIGHT / 2.;
 
@@ -279,6 +306,7 @@ impl Game {
                     self.audio_resources[1].play().expect("Cannot play Some(explode).mp3");
 
                     self.enemies.remove(i);
+                    self.player_bullets.remove(j);
 
                     done = true;
                 }
@@ -288,7 +316,53 @@ impl Game {
                 let cam_loc = self.camera.location();
                 let org_pos = cam_loc.data.as_slice();
                 
-                self.elapsed_shake = Some((0., Vec2::new(org_pos[0], org_pos[1])));
+                self.elapsed_shake = Some((0., Vec2::new(org_pos[0], org_pos[1]), 3.));
+                self.camera_shakeke();
+
+                break;
+            }
+        }
+
+        for i in 0..self.barrels.len() {
+            let barrel = &self.barrels[i];
+
+            let barrel_start_x = barrel.pos_x;
+            let barrel_end_x = barrel.pos_x + 91.;
+
+            let mut done: bool = false;
+
+            for fish in &self.player_bullets {
+                if fish.pos_x >= barrel_start_x && fish.pos_x <= barrel_end_x {
+                    const HEIGHT2: f32 = HEIGHT / 2.;
+
+                    self.particles.push(
+                        (ParticleSystemBuilder::new(ctx)
+                            .count(500)
+                            .emission_rate(200.0)
+                            .start_max_age(5.0)
+                            .start_size_range(2.0, 15.0)
+                            .delta_size(Transition::range(1., 2.))
+                            .delta_color(Transition::range(
+                                ggez::graphics::Color::from((255, 0, 0)),
+                                ggez::graphics::Color::from((255, 255, 0)),
+                            ))
+                            .emission_shape(EmissionShape::Circle(mint::Point2 { x: 0.0, y: 0.0 }, 200.0))
+                            .build(), barrel_start_x, -HEIGHT2 + 70., 0)
+                    );
+
+                    self.audio_resources[1].play().expect("Cannot play Some(explode).mp3");
+
+                    self.barrels.remove(i);
+
+                    done = true;
+                }
+            }
+
+            if done {
+                let cam_loc = self.camera.location();
+                let org_pos = cam_loc.data.as_slice();
+                
+                self.elapsed_shake = Some((0., Vec2::new(org_pos[0], org_pos[1]), 5.));
                 self.camera_shakeke();
 
                 break;
@@ -372,14 +446,14 @@ impl Game {
     pub fn camera_shakeke(&mut self) {
         let mut rng = rand::thread_rng();
     
-        let magnitude = 3.;
         let elapsed = self.elapsed_shake.unwrap();
+        let magnitude = elapsed.2;
     
         let x = rng.gen_range(-1.0, 1.0) * magnitude;
         let y = rng.gen_range(-1.0, 1.0) * magnitude;
 
         self.camera.move_by(Vec2::new(x, y));
     
-        self.elapsed_shake = Some((elapsed.0 + 0.1, elapsed.1));
+        self.elapsed_shake = Some((elapsed.0 + 0.1, elapsed.1, magnitude));
     }
 }
