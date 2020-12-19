@@ -1,11 +1,6 @@
 use std::{io::Read, sync::Mutex};
 
-use ggez::{
-    event::KeyCode,
-    graphics::{self, Color, DrawMode, DrawParam, Scale, Text},
-    nalgebra::Point2,
-    Context, GameResult,
-};
+use ggez::{Context, GameResult, event::KeyCode, graphics::{self, Color, DrawMode, DrawParam, Scale, Text}, nalgebra::Point2, timer};
 use ggez_goodies::{camera::Camera, nalgebra_glm::Vec2};
 use graphics::{Font, Image, Mesh, TextFragment};
 use rand::Rng;
@@ -29,6 +24,7 @@ pub struct Game {
 
     camera: Camera,
     elapsed_shake: Option<(f32, Vec2)>,
+    tics: Option<i32>
 }
 
 impl Game {
@@ -124,7 +120,8 @@ impl Game {
             camera,
 
             consolas: graphics::Font::new(ctx, "/fonts/Consolas.ttf").unwrap(),
-            elapsed_shake: None
+            elapsed_shake: None,
+            tics: None,
         })
     }
 
@@ -193,7 +190,21 @@ impl Game {
         graphics::present(ctx)
     }
 
-    pub fn update(&mut self, _ctx: &mut Context) -> GameResult<Option<crate::Screen>> {
+    pub fn update(&mut self, ctx: &mut Context) -> GameResult<Option<crate::Screen>> {
+        if let Some(t) = self.tics {
+            if timer::ticks(ctx) % t as usize == 0 {
+                return self.inner_update(ctx);
+            }
+        }
+
+        else {
+            return self.inner_update(ctx);
+        }
+
+        Ok(None)
+    }
+
+    pub fn inner_update(&mut self, _ctx: &mut Context) -> GameResult<Option<crate::Screen>> {
         let ferris_pos_x = self.player.pos_x;
         let mut ferris_is_falling_down: bool = true;
 
@@ -283,17 +294,30 @@ impl Game {
                 if let Some(fish) = self.player.shoot() {
                     self.player_bullets.push(fish);
                 }
-            }
+            },
+            KeyCode::F3 => {
+                self.tics = Some(6);
+            },
             _ => (),
         }
 
         None
     }
 
+    pub fn key_up_event(&mut self, keycode: KeyCode) {
+        match keycode {
+            KeyCode::F3 => {
+                self.tics = None;
+            },
+
+            _ => ()
+        }
+    }
+
     pub fn camera_shakeke(&mut self) {
         let mut rng = rand::thread_rng();
     
-        let magnitude = 2.;
+        let magnitude = 3.;
         let elapsed = self.elapsed_shake.unwrap();
     
         let x = rng.gen_range(-1.0, 1.0) * magnitude;

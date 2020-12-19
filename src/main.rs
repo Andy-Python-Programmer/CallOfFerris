@@ -98,6 +98,13 @@ impl EventHandler for MyGame {
         }
     }
 
+    fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods) {
+        match self.screen {
+            Screen::Play => self.game_screen.lock().unwrap().key_up_event(keycode),
+            _ => ()
+        }
+    }
+
     fn key_down_event(
         &mut self,
         _ctx: &mut Context,
