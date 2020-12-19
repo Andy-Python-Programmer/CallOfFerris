@@ -1,7 +1,7 @@
 use std::{io::Read, sync::Mutex};
 
-use ggez::{Context, GameResult, event::KeyCode, graphics::{self, Color, DrawMode, DrawParam, Scale, Text}, nalgebra::Point2, timer};
-use ggez_goodies::{camera::Camera, nalgebra_glm::Vec2};
+use ggez::{Context, GameResult, event::KeyCode, graphics::{self, Color, DrawMode, DrawParam, Scale, Text}, mint, nalgebra::Point2, timer};
+use ggez_goodies::{camera::{Camera, CameraDraw}, nalgebra_glm::Vec2, particle::{EmissionShape, ParticleSystem, ParticleSystemBuilder, Transition}};
 use graphics::{Font, Image, Mesh, TextFragment};
 use rand::Rng;
 
@@ -24,7 +24,8 @@ pub struct Game {
 
     camera: Camera,
     elapsed_shake: Option<(f32, Vec2)>,
-    tics: Option<i32>
+    tics: Option<i32>,
+    particles: Vec<(ParticleSystem, f32, f32, i32)>
 }
 
 impl Game {
@@ -122,6 +123,7 @@ impl Game {
             consolas: graphics::Font::new(ctx, "/fonts/Consolas.ttf").unwrap(),
             elapsed_shake: None,
             tics: None,
+            particles: vec![]
         })
     }
 
@@ -187,6 +189,15 @@ impl Game {
             fish.draw(ctx, &self.camera, &self.bullet_resources)?;
         }
 
+        for sys in &mut self.particles {
+            &sys.0.draw_camera(
+                &self.camera,
+                ctx,
+                Vec2::new(sys.1, sys.2),
+                0.
+            );
+        }
+
         graphics::present(ctx)
     }
 
@@ -204,7 +215,7 @@ impl Game {
         Ok(None)
     }
 
-    pub fn inner_update(&mut self, _ctx: &mut Context) -> GameResult<Option<crate::Screen>> {
+    pub fn inner_update(&mut self, ctx: &mut Context) -> GameResult<Option<crate::Screen>> {
         let ferris_pos_x = self.player.pos_x;
         let mut ferris_is_falling_down: bool = true;
 
@@ -238,6 +249,26 @@ impl Game {
 
             for fish in &self.player_bullets {
                 if fish.pos_x >= go_start_x && fish.pos_x <= go_end_x {
+                    const HEIGHT2: f32 = HEIGHT / 2.;
+
+                    self.particles.push(
+                        (ParticleSystemBuilder::new(ctx)
+                            .count(100)
+                            .emission_rate(100.0)
+                            .start_max_age(5.0)
+                            .start_size_range(2.0, 15.0)
+                            .start_color_range(
+                                graphics::Color::from((0, 0, 0)),
+                                graphics::Color::from((255, 255, 255)),
+                            )
+                            .delta_color(Transition::range(
+                                ggez::graphics::Color::from((255, 0, 0)),
+                                ggez::graphics::Color::from((255, 255, 0)),
+                            ))
+                            .emission_shape(EmissionShape::Circle(mint::Point2 { x: 0.0, y: 0.0 }, 100.0))
+                            .build(), go_start_x, -HEIGHT2 + 70., 0)
+                    );
+
                     self.enemies.remove(i);
 
                     done = true;
@@ -273,6 +304,19 @@ impl Game {
             else {
                 self.camera.move_to(s.1);
                 self.elapsed_shake = None;
+            }
+        }
+
+        for sys in &mut self.particles {
+            sys.0.update(0.5);
+            sys.3 += 1;
+        }
+
+        for i in 0..self.particles.len() {
+            let sys = &self.particles[i];
+
+            if sys.3 > 6 {
+                self.particles.remove(i);
             }
         }
 
