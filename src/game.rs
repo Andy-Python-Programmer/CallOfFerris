@@ -230,7 +230,7 @@ impl Game {
             let tile_start = tile.pos_x;
             let tile_end = tile.pos_x + 64.;
 
-            if ferris_pos_x >= tile_start && ferris_pos_x <= tile_end && ferris_pos_y + (-HEIGHT / 2.0) - 64. >= (-HEIGHT / 2.0) - 64. || ferris_pos_y == 0. {
+            if ferris_pos_x >= tile_start && ferris_pos_x <= tile_end && ferris_pos_y + (-HEIGHT / 2.0) - 64. >= (-HEIGHT / 2.0) - 64. {
                 ferris_is_falling_down = false;
 
                 break;
