@@ -13,11 +13,12 @@ mod game;
 mod menu;
 
 mod components {
+    pub mod barrel;
+    pub mod bullet;
+    pub mod cloud;
     pub mod enemy;
     pub mod player;
     pub mod tile;
-    pub mod bullet;
-    pub mod barrel;
 }
 
 const WIDTH: f32 = 1000.0;
@@ -102,7 +103,7 @@ impl EventHandler for MyGame {
     fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods) {
         match self.screen {
             Screen::Play => self.game_screen.lock().unwrap().key_up_event(keycode),
-            _ => ()
+            _ => (),
         }
     }
 

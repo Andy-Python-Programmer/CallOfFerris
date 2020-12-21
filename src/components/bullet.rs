@@ -1,11 +1,14 @@
-use ggez::{Context, GameResult, graphics::Image};
-use ggez_goodies::{camera::{Camera, CameraDraw}, nalgebra_glm::Vec2};
+use ggez::{graphics::Image, Context, GameResult};
+use ggez_goodies::{
+    camera::{Camera, CameraDraw},
+    nalgebra_glm::Vec2,
+};
 
 pub struct Turbofish {
     pub pos_x: f32,
     pub pos_y: f32,
 
-    traveled_count: i32
+    traveled_count: i32,
 }
 
 impl Turbofish {
@@ -13,17 +16,17 @@ impl Turbofish {
         Self {
             pos_x,
             pos_y,
-            traveled_count: 0
+            traveled_count: 0,
         }
     }
 
-    pub fn draw(&mut self, ctx: &mut Context, camera: &Camera, resources: &Vec<Image>) -> GameResult<()> {
-        &resources[0].draw_camera(
-            camera,
-            ctx,
-            Vec2::new(self.pos_x, self.pos_y),
-            1.5708
-        );
+    pub fn draw(
+        &mut self,
+        ctx: &mut Context,
+        camera: &Camera,
+        resources: &Vec<Image>,
+    ) -> GameResult<()> {
+        &resources[0].draw_camera(camera, ctx, Vec2::new(self.pos_x, self.pos_y), 1.5708);
 
         Ok(())
     }
@@ -34,9 +37,7 @@ impl Turbofish {
             self.pos_x += 10.;
 
             false
-        }
-
-        else {
+        } else {
             true
         }
     }

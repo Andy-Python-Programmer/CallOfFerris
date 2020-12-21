@@ -63,15 +63,15 @@ impl Player {
     pub fn update(&mut self, gonna_boom: bool) {
         if self.going_boom {
             self.pos_y -= self.velocity;
-            
+
             if self.pos_y < 0. {
                 self.going_boom = false;
-                
+
                 self.pos_y = 0.;
                 self.velocity = 0.;
             }
         }
-        
+
         if self.pos_y > 0. || gonna_boom {
             self.velocity += self.gravity;
             self.pos_y -= self.velocity;
@@ -84,10 +84,11 @@ impl Player {
         if self.ammo != 0 {
             self.ammo -= 1;
 
-            return Some(Turbofish::new(self.pos_x + 220., (-HEIGHT2 + 106.) + self.pos_y));
-        }
-
-        else {
+            return Some(Turbofish::new(
+                self.pos_x + 220.,
+                (-HEIGHT2 + 106.) + self.pos_y,
+            ));
+        } else {
             None
         }
     }
