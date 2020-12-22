@@ -16,17 +16,7 @@ use ggez_goodies::{
 use graphics::{Font, Image, TextFragment};
 use rand::Rng;
 
-use crate::{
-    components::{
-        barrel::Barrel,
-        bullet::Turbofish,
-        cloud::Cloud,
-        enemy::Enemy,
-        player::Player,
-        tile::{Tile, TileType},
-    },
-    Screen, HEIGHT, WIDTH,
-};
+use crate::{HEIGHT, Screen, WIDTH, components::{barrel::Barrel, bullet::Turbofish, cloud::Cloud, enemy::Enemy, player::{Direction, Player}, tile::{Tile, TileType}}};
 
 pub struct Game {
     ground: Vec<Tile>,
@@ -337,6 +327,8 @@ impl Game {
                     self.player_bullets.remove(j);
 
                     done = true;
+
+                    break;
                 }
             }
 
@@ -448,9 +440,13 @@ impl Game {
         match keycode {
             KeyCode::Left => {
                 self.player.pos_x -= 10.;
+
+                self.player.set_direction(Direction::Left);
             }
             KeyCode::Right => {
                 self.player.pos_x += 10.;
+
+                self.player.set_direction(Direction::Right);
             }
             KeyCode::Space => {
                 self.player.go_boom();
@@ -464,7 +460,7 @@ impl Game {
                     self.player_bullets.push(fish);
                 }
             }
-            KeyCode::F3 => {
+            KeyCode::Up => {
                 self.tics = Some(6);
             }
             _ => (),
@@ -475,12 +471,14 @@ impl Game {
 
     pub fn key_up_event(&mut self, keycode: KeyCode) {
         match keycode {
-            KeyCode::F3 => {
+            KeyCode::Up => {
                 self.tics = None;
             }
 
             _ => (),
         }
+
+        self.player.set_direction(Direction::None);
     }
 
     pub fn camera_shakeke(&mut self) {

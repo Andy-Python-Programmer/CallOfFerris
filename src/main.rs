@@ -11,6 +11,7 @@ use ggez::{
 mod dead;
 mod game;
 mod menu;
+mod utils;
 
 mod components {
     pub mod barrel;
