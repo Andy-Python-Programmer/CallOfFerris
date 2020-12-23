@@ -1,4 +1,4 @@
-<p align="center"><img src="misc/logo.png"></p>
+<p align="center"><img src="misc/logo.png" width="500px"></p>
 
 ## Screenshots
 
