@@ -23,7 +23,7 @@ pub struct Player {
 
     gravity: f32,
     velocity: f32,
-    going_boom: bool,
+    pub going_boom: bool,
     lerp_to: Option<f32>,
     direction: Direction,
 }
