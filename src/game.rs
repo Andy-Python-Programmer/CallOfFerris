@@ -1,6 +1,13 @@
 use std::{io::Read, sync::Mutex};
 
-use ggez::{Context, GameResult, audio::{SoundSource, Source}, event::KeyCode, graphics::{self, Color, DrawParam, Scale, Shader, Text}, mint, nalgebra::Point2, timer};
+use ggez::{
+    audio::{SoundSource, Source},
+    event::KeyCode,
+    graphics::{self, Color, DrawParam, Scale, Shader, Text},
+    mint,
+    nalgebra::Point2,
+    timer, Context, GameResult,
+};
 use ggez_goodies::{
     camera::{Camera, CameraDraw},
     nalgebra_glm::Vec2,
@@ -18,6 +25,7 @@ use crate::{
         player::{Direction, Player},
         tile::{Tile, TileType},
     },
+    utils::lerp,
     Screen, HEIGHT, WIDTH,
 };
 
@@ -55,6 +63,7 @@ pub struct Game {
     particles: Vec<(ParticleSystem, f32, f32, i32)>,
 
     dim_shader: ShaderGeneric<GlBackendSpec, Dim>,
+    dim_constant: Dim,
 }
 
 impl Game {
@@ -77,9 +86,7 @@ impl Game {
         let mut draw_pos = 0.;
         let draw_inc = 64.;
 
-        let dim_constant = Dim {
-            rate: 0.5,
-        };
+        let dim_constant = Dim { rate: 1.0 };
 
         let dim_shader = Shader::new(
             ctx,
@@ -87,8 +94,9 @@ impl Game {
             "/shaders/dim.glslf",
             dim_constant,
             "Dim",
-            None
-        ).unwrap();
+            None,
+        )
+        .unwrap();
 
         for id in buffer.chars() {
             match id {
@@ -197,7 +205,8 @@ impl Game {
             tics: None,
             particles: vec![],
 
-            dim_shader
+            dim_shader,
+            dim_constant,
         })
     }
 
@@ -206,9 +215,7 @@ impl Game {
             let _lock = graphics::use_shader(ctx, &self.dim_shader);
 
             self.inner_draw(ctx)
-        }
-
-        else {
+        } else {
             self.inner_draw(ctx)
         }
     }
@@ -281,6 +288,13 @@ impl Game {
 
     pub fn update(&mut self, ctx: &mut Context) -> GameResult<Option<crate::Screen>> {
         if let Some(t) = self.tics {
+            if let Some(_t) = self.tics {
+                if self.dim_constant.rate != 0.5 {
+                    self.dim_constant.rate = lerp(self.dim_constant.rate, 0.5, 0.1);
+                    self.dim_shader.send(ctx, self.dim_constant)?;
+                }
+            }
+
             if timer::ticks(ctx) % t as usize == 0 {
                 return self.inner_update(ctx);
             }
@@ -513,6 +527,7 @@ impl Game {
         match keycode {
             KeyCode::Up => {
                 self.tics = None;
+                self.dim_constant.rate = 1.0;
             }
 
             _ => (),
