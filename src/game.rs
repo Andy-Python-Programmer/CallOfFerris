@@ -147,7 +147,9 @@ impl Game {
             }
         }
 
-        let player = player.expect("No player found!");
+        let mut player = player.expect("No player found!");
+
+        player.pos_y += 40.;
 
         camera.move_to(Vec2::new(player.pos_x, player.pos_y));
 

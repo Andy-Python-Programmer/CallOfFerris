@@ -110,6 +110,10 @@ impl Player {
             self.velocity += self.gravity;
             self.pos_y -= self.velocity;
         }
+
+        if self.pos_y < 0. && !gonna_boom {
+            self.pos_y = 0.;
+        }
     }
 
     pub fn shoot(&mut self) -> Option<Turbofish> {
