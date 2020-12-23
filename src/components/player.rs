@@ -114,7 +114,7 @@ impl Player {
             self.pos_y -= self.velocity;
         }
 
-        if self.pos_y < 0. && !gonna_boom {
+        if self.pos_y < 0. && !gonna_boom && !self.going_boom {
             self.pos_y = 0.;
         }
     }
