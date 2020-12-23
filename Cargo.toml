@@ -11,3 +11,4 @@ ggez = "0.5"
 rand = "0.7"
 ggez-goodies = { git = "https://github.com/ggez/ggez-goodies" }
 nalgebra-glm = "0.9.0"
+gfx = "0.18.2"

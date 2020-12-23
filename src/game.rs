@@ -1,19 +1,12 @@
 use std::{io::Read, sync::Mutex};
 
-use ggez::{
-    audio::{SoundSource, Source},
-    event::KeyCode,
-    graphics::{self, Color, DrawParam, Scale, Text},
-    mint,
-    nalgebra::Point2,
-    timer, Context, GameResult,
-};
+use ggez::{Context, GameResult, audio::{SoundSource, Source}, event::KeyCode, graphics::{self, Color, DrawParam, Scale, Shader, Text}, mint, nalgebra::Point2, timer};
 use ggez_goodies::{
     camera::{Camera, CameraDraw},
     nalgebra_glm::Vec2,
     particle::{EmissionShape, ParticleSystem, ParticleSystemBuilder, Transition},
 };
-use graphics::{Font, Image, TextFragment};
+use graphics::{Font, GlBackendSpec, Image, ShaderGeneric, TextFragment};
 use rand::Rng;
 
 use crate::{
@@ -27,6 +20,14 @@ use crate::{
     },
     Screen, HEIGHT, WIDTH,
 };
+
+use gfx::*;
+
+gfx_defines! {
+    constant Dim {
+        rate: f32 = "u_Rate",
+    }
+}
 
 pub struct Game {
     ground: Vec<Tile>,
@@ -52,6 +53,8 @@ pub struct Game {
     elapsed_shake: Option<(f32, Vec2, f32)>,
     tics: Option<i32>,
     particles: Vec<(ParticleSystem, f32, f32, i32)>,
+
+    dim_shader: ShaderGeneric<GlBackendSpec, Dim>,
 }
 
 impl Game {
@@ -72,8 +75,20 @@ impl Game {
         let mut player = None;
 
         let mut draw_pos = 0.;
-
         let draw_inc = 64.;
+
+        let dim_constant = Dim {
+            rate: 0.5,
+        };
+
+        let dim_shader = Shader::new(
+            ctx,
+            "/shaders/dim.basic.glslf",
+            "/shaders/dim.glslf",
+            dim_constant,
+            "Dim",
+            None
+        ).unwrap();
 
         for id in buffer.chars() {
             match id {
@@ -181,10 +196,24 @@ impl Game {
             elapsed_shake: None,
             tics: None,
             particles: vec![],
+
+            dim_shader
         })
     }
 
     pub fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
+        if let Some(_t) = self.tics {
+            let _lock = graphics::use_shader(ctx, &self.dim_shader);
+
+            self.inner_draw(ctx)
+        }
+
+        else {
+            self.inner_draw(ctx)
+        }
+    }
+
+    fn inner_draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         graphics::clear(ctx, graphics::BLACK);
 
         // Clouds

@@ -91,7 +91,7 @@ impl Player {
             if self.pos_x as i32 == l as i32 {
                 self.lerp_to = None;
             } else {
-                self.pos_x = lerp(self.pos_x, l, 0.4);
+                self.pos_x = lerp(self.pos_x, l, 0.5);
             }
         }
 
