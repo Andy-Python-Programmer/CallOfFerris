@@ -4,14 +4,14 @@ use ggez_goodies::{
     nalgebra_glm::Vec2,
 };
 
-use crate::{HEIGHT, utils::lerp};
+use crate::{utils::lerp, HEIGHT};
 
 use super::bullet::Turbofish;
 
 pub enum Direction {
     Left,
     Right,
-    None
+    None,
 }
 
 pub struct Player {
@@ -23,7 +23,7 @@ pub struct Player {
     velocity: f32,
     going_boom: bool,
     lerp_to: Option<f32>,
-    direction: Direction
+    direction: Direction,
 }
 
 impl Player {
@@ -36,7 +36,7 @@ impl Player {
             velocity: 0.,
             going_boom: false,
             lerp_to: None,
-            direction: Direction::None
+            direction: Direction::None,
         }
     }
 
@@ -90,13 +90,11 @@ impl Player {
         if let Some(l) = self.lerp_to {
             if self.pos_x as i32 == l as i32 {
                 self.lerp_to = None;
-            }
-
-            else {
+            } else {
                 self.pos_x = lerp(self.pos_x, l, 0.4);
             }
         }
-        
+
         if self.going_boom {
             self.pos_y -= self.velocity;
 

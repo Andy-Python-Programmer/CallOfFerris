@@ -20,7 +20,7 @@ impl Cloud {
             pos_x,
             pos_y,
             scale,
-            speed
+            speed,
         }
     }
 
@@ -46,7 +46,7 @@ impl Cloud {
         let delta_time = ggez::timer::delta(ctx).as_secs_f32();
 
         self.pos_x += delta_time * self.speed;
-        
+
         if self.pos_x > WIDTH + 100. {
             self.pos_x = -100.;
         }

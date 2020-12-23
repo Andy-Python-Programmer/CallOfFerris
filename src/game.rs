@@ -16,7 +16,17 @@ use ggez_goodies::{
 use graphics::{Font, Image, TextFragment};
 use rand::Rng;
 
-use crate::{HEIGHT, Screen, WIDTH, components::{barrel::Barrel, bullet::Turbofish, cloud::Cloud, enemy::Enemy, player::{Direction, Player}, tile::{Tile, TileType}}};
+use crate::{
+    components::{
+        barrel::Barrel,
+        bullet::Turbofish,
+        cloud::Cloud,
+        enemy::Enemy,
+        player::{Direction, Player},
+        tile::{Tile, TileType},
+    },
+    Screen, HEIGHT, WIDTH,
+};
 
 pub struct Game {
     ground: Vec<Tile>,
@@ -123,7 +133,7 @@ impl Game {
                 rng.gen_range(0., WIDTH),
                 rng.gen_range(10., 40.),
                 rng.gen_range(0.1, 0.3),
-                rng.gen_range(10., 35.)
+                rng.gen_range(10., 35.),
             ));
         }
 
@@ -461,6 +471,7 @@ impl Game {
                 }
             }
             KeyCode::Up => {
+                // TODO: Add chromatic aberration on slow motion.
                 self.tics = Some(6);
             }
             _ => (),
