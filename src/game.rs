@@ -3,7 +3,7 @@ use std::{io::Read, sync::Mutex};
 use ggez::{
     audio::{SoundSource, Source},
     event::KeyCode,
-    graphics::{self, Color, DrawParam, Scale, Shader, Text},
+    graphics::{self, Color, DrawParam, Shader},
     mint,
     nalgebra::Point2,
     timer, Context, GameResult,
@@ -13,7 +13,8 @@ use ggez_goodies::{
     nalgebra_glm::Vec2,
     particle::{EmissionShape, ParticleSystem, ParticleSystemBuilder, Transition},
 };
-use graphics::{Font, GlBackendSpec, Image, ShaderGeneric, TextFragment};
+use graphics::{Font, GlBackendSpec, Image, ShaderGeneric};
+use mint::Vector2;
 use rand::Rng;
 
 use crate::{
@@ -25,7 +26,7 @@ use crate::{
         player::{Direction, Player},
         tile::{Tile, TileType},
     },
-    utils::lerp,
+    utils::{lerp, remap},
     Screen, HEIGHT, WIDTH,
 };
 
@@ -55,6 +56,7 @@ pub struct Game {
     barrel_resources: Vec<Image>,
     cloud_resources: Vec<Image>,
 
+    #[allow(dead_code)]
     consolas: Font,
 
     camera: Camera,
@@ -189,7 +191,10 @@ impl Game {
 
             bullet_resources: vec![Image::new(ctx, "/images/Some(turbofish).png").unwrap()],
 
-            ui_resources: vec![Image::new(ctx, "/images/Some(ammo).png").unwrap()],
+            ui_resources: vec![
+                Image::new(ctx, "/images/Some(profile).png").unwrap(),
+                Image::new(ctx, "/images/Some(fish).png").unwrap(),
+            ],
 
             barrel_resources: vec![Image::new(ctx, "/images/Some(barrel).png").unwrap()],
 
@@ -249,43 +254,100 @@ impl Game {
         self.player
             .draw(ctx, &self.camera, &self.player_resources)?;
 
-        graphics::draw(
-            ctx,
-            &self.ui_resources[0],
-            DrawParam::default().dest(Point2::new(10.0, 10.0)),
-        )?;
-
-        let ammo_frag = TextFragment {
-            text: self.player.ammo.to_string(),
-            font: Some(self.consolas),
-            scale: Some(Scale::uniform(30.0)),
-            color: {
-                if self.player.ammo > 10 / 2 {
-                    Some(Color::from_rgb(255, 255, 255))
-                } else {
-                    Some(Color::from_rgb(255, 80, 76))
-                }
-            },
-
-            ..Default::default()
-        };
-
-        graphics::draw(
-            ctx,
-            &Text::new(ammo_frag),
-            DrawParam::default().dest(Point2::new(30.0, 25.0)),
-        )?;
-
+        // Player Bullets
         for fish in &mut self.player_bullets {
             fish.draw(ctx, &self.camera, &self.bullet_resources)?;
         }
 
+        // Particles
         for sys in &mut self.particles {
             &sys.0
                 .draw_camera(&self.camera, ctx, Vec2::new(sys.1, sys.2), 0.);
         }
 
+        // User Profile, etc..
+        self.draw_ui(ctx)?;
+
         graphics::present(ctx)
+    }
+
+    fn draw_ui(&mut self, ctx: &mut Context) -> GameResult<()> {
+        graphics::draw(
+            ctx,
+            &self.ui_resources[0],
+            DrawParam::default()
+                .dest(Point2::new(10.0, 10.0))
+                .scale(Vector2 { x: 0.5, y: 0.5 }),
+        )?;
+
+        let ammo_rect = graphics::Mesh::new_rectangle(
+            ctx,
+            graphics::DrawMode::fill(),
+            graphics::Rect::new(
+                ((self.ui_resources[0].width() / 2) + 10) as f32,
+                (self.ui_resources[0].height() / 3) as f32,
+                150.,
+                15.,
+            ),
+            Color::from_rgb(54, 50, 49),
+        )?;
+
+        let hp_rect = graphics::Mesh::new_rectangle(
+            ctx,
+            graphics::DrawMode::fill(),
+            graphics::Rect::new(
+                ((self.ui_resources[0].width() / 2) + 10) as f32,
+                (self.ui_resources[0].height() / 5) as f32,
+                150.,
+                15.,
+            ),
+            Color::from_rgb(54, 50, 49),
+        )?;
+
+        let cur_ammo_rect = graphics::Mesh::new_rectangle(
+            ctx,
+            graphics::DrawMode::fill(),
+            graphics::Rect::new(
+                ((self.ui_resources[0].width() / 2) + 10) as f32,
+                (self.ui_resources[0].height() / 3) as f32,
+                remap(self.player.ammo as f32, 0., 10., 0., 150.),
+                15.,
+            ),
+            Color::from_rgb(21, 156, 228),
+        )?;
+
+        let cur_hp_rect = graphics::Mesh::new_rectangle(
+            ctx,
+            graphics::DrawMode::fill(),
+            graphics::Rect::new(
+                ((self.ui_resources[0].width() / 2) + 10) as f32,
+                (self.ui_resources[0].height() / 5) as f32,
+                remap(self.player.health as f32, 0., 100., 0., 150.),
+                15.,
+            ),
+            Color::from_rgb(34, 205, 124),
+        )?;
+
+        graphics::draw(ctx, &ammo_rect, DrawParam::default())?;
+
+        graphics::draw(ctx, &hp_rect, DrawParam::default())?;
+
+        graphics::draw(ctx, &cur_ammo_rect, DrawParam::default())?;
+
+        graphics::draw(ctx, &cur_hp_rect, DrawParam::default())?;
+
+        graphics::draw(
+            ctx,
+            &self.ui_resources[1],
+            DrawParam::default()
+                .dest(Point2::new(
+                    ((self.ui_resources[0].width() / 2) - 10) as f32,
+                    (self.ui_resources[0].height() / 3) as f32,
+                ))
+                .scale(Vector2 { x: 0.7, y: 0.7 }),
+        )?;
+
+        Ok(())
     }
 
     pub fn update(&mut self, ctx: &mut Context) -> GameResult<Option<crate::Screen>> {

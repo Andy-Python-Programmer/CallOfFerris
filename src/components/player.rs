@@ -17,7 +17,9 @@ pub enum Direction {
 pub struct Player {
     pub pos_x: f32,
     pub pos_y: f32,
+
     pub ammo: i32,
+    pub health: i32,
 
     gravity: f32,
     velocity: f32,
@@ -37,6 +39,7 @@ impl Player {
             going_boom: false,
             lerp_to: None,
             direction: Direction::None,
+            health: 100,
         }
     }
 
