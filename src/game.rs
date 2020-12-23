@@ -492,12 +492,12 @@ impl Game {
     pub fn key_press(&mut self, keycode: KeyCode) -> Option<crate::Screen> {
         match keycode {
             KeyCode::Left => {
-                self.player.pos_x -= 10.;
+                self.player.move_x(self.player.pos_x - 10.);
 
                 self.player.set_direction(Direction::Left);
             }
             KeyCode::Right => {
-                self.player.pos_x += 10.;
+                self.player.move_x(self.player.pos_x + 10.);
 
                 self.player.set_direction(Direction::Right);
             }

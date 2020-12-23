@@ -126,4 +126,8 @@ impl Player {
             None
         }
     }
+
+    pub fn move_x(&mut self, x: f32) {
+        self.lerp_to = Some(lerp(self.pos_x, x, 2.5));
+    }
 }
