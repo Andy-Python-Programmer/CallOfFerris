@@ -1,4 +1,4 @@
-use std::{io::Read, sync::Mutex};
+use std::{collections::HashMap, io::Read, sync::Mutex};
 
 use ggez::{
     audio::{SoundSource, Source},
@@ -60,9 +60,11 @@ pub struct Game {
     consolas: Font,
 
     camera: Camera,
+
     elapsed_shake: Option<(f32, Vec2, f32)>,
     tics: Option<i32>,
     particles: Vec<(ParticleSystem, f32, f32, i32)>,
+    ui_lerp: HashMap<String, f32>,
 
     dim_shader: ShaderGeneric<GlBackendSpec, Dim>,
     dim_constant: Dim,
@@ -150,6 +152,10 @@ impl Game {
         }
 
         let mut player = player.expect("No player found!");
+        let mut ui_lerp = HashMap::new();
+
+        ui_lerp.insert(String::from("ammo"), player.ammo as f32);
+        ui_lerp.insert(String::from("health"), player.health as f32);
 
         player.pos_y += 40.;
         player.going_boom = true;
@@ -209,9 +215,11 @@ impl Game {
             camera,
 
             consolas: graphics::Font::new(ctx, "/fonts/Consolas.ttf").unwrap(),
+            
             elapsed_shake: None,
             tics: None,
             particles: vec![],
+            ui_lerp,
 
             dim_shader,
             dim_constant,
@@ -551,6 +559,20 @@ impl Game {
             }
         }
 
+        for v in &mut self.ui_lerp {
+            match v.0.as_str() {
+                "ammo" => {
+                    self.player.ammo = lerp(self.player.ammo, *v.1, 0.3);
+                },
+
+                "health" => {
+                    // TODO: Health lerping
+                }
+
+                _ => panic!()
+            }
+        }
+
         Ok(None)
     }
 
@@ -570,10 +592,15 @@ impl Game {
                 self.player.go_boom();
             }
             KeyCode::S => {
+                let ui_lerp = self.ui_lerp.clone();
+
                 if let Some(fish) = self.player.shoot() {
                     self.audio_resources[0]
                         .play()
                         .expect("Cannot play Some(turbofish_shoot).mp3");
+
+                    let cur_ammo = ui_lerp.get("ammo").unwrap();
+                    self.ui_lerp.insert(String::from("ammo"), *cur_ammo - 1.);
 
                     self.player_bullets.push(fish);
                 }

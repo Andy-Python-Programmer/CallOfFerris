@@ -18,7 +18,7 @@ pub struct Player {
     pub pos_x: f32,
     pub pos_y: f32,
 
-    pub ammo: i32,
+    pub ammo: f32,
     pub health: i32,
 
     gravity: f32,
@@ -32,7 +32,7 @@ impl Player {
     pub fn new(pos_x: f32) -> Self {
         Self {
             pos_x,
-            ammo: 10,
+            ammo: 10.,
             pos_y: 0.,
             gravity: 0.1,
             velocity: 0.,
@@ -122,9 +122,7 @@ impl Player {
     pub fn shoot(&mut self) -> Option<Turbofish> {
         const HEIGHT2: f32 = HEIGHT / 2.;
 
-        if self.ammo != 0 {
-            self.ammo -= 1;
-
+        if self.ammo as i32 != 0 {
             return Some(Turbofish::new(
                 self.pos_x + 220.,
                 (-HEIGHT2 + 106.) + self.pos_y,
