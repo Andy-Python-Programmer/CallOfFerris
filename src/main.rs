@@ -12,6 +12,7 @@ mod dead;
 mod game;
 mod menu;
 mod utils;
+mod map;
 
 mod components {
     pub mod barrel;

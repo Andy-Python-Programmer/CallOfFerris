@@ -1,19 +1,12 @@
 use std::{collections::HashMap, io::Read, sync::Mutex};
 
-use ggez::{
-    audio::{SoundSource, Source},
-    event::KeyCode,
-    graphics::{self, Color, DrawParam, Shader},
-    mint,
-    nalgebra::Point2,
-    timer, Context, GameResult,
-};
+use ggez::{Context, GameResult, audio::{SoundSource, Source}, event::KeyCode, graphics::{self, Color, DrawParam, Shader, Text}, mint, nalgebra::Point2, timer};
 use ggez_goodies::{
     camera::{Camera, CameraDraw},
     nalgebra_glm::Vec2,
     particle::{EmissionShape, ParticleSystem, ParticleSystemBuilder, Transition},
 };
-use graphics::{Font, GlBackendSpec, Image, ShaderGeneric};
+use graphics::{Font, GlBackendSpec, Image, Scale, ShaderGeneric, TextFragment};
 use mint::Vector2;
 use rand::Rng;
 
@@ -24,9 +17,10 @@ use crate::{
         cloud::Cloud,
         enemy::Enemy,
         player::{Direction, Player},
-        tile::{Tile, TileType},
+        tile::Tile,
     },
     utils::{lerp, remap},
+    map::Map,
     Screen, HEIGHT, WIDTH,
 };
 
@@ -56,7 +50,6 @@ pub struct Game {
     barrel_resources: Vec<Image>,
     cloud_resources: Vec<Image>,
 
-    #[allow(dead_code)]
     consolas: Font,
 
     camera: Camera,
@@ -68,6 +61,10 @@ pub struct Game {
 
     dim_shader: ShaderGeneric<GlBackendSpec, Dim>,
     dim_constant: Dim,
+
+    end: Option<String>,
+
+    draw_end_text: (bool, Option<usize>, bool, bool) // Thread Sleeped?, Current Iters, Done?, Win?
 }
 
 impl Game {
@@ -80,15 +77,16 @@ impl Game {
         let mut buffer = String::new();
         map.read_to_string(&mut buffer).unwrap();
 
-        let mut ground = vec![];
-        let mut enemies = vec![];
-        let mut barrels = vec![];
+        let mut map_1 = Map::new();
+
+        map_1.parse(buffer);
+
+        let ground = map_1.ground;
+        let enemies = map_1.enemies;
+        let barrels = map_1.barrels;
         let mut clouds = vec![];
 
-        let mut player = None;
-
-        let mut draw_pos = 0.;
-        let draw_inc = 64.;
+        let player = map_1.player;
 
         let dim_constant = Dim { rate: 1.0 };
 
@@ -101,55 +99,6 @@ impl Game {
             None,
         )
         .unwrap();
-
-        for id in buffer.chars() {
-            match id {
-                '[' => {
-                    ground.push(Tile::new(draw_pos, TileType::LEFT));
-
-                    draw_pos += draw_inc;
-                }
-
-                '-' => {
-                    ground.push(Tile::new(draw_pos, TileType::CENTER));
-
-                    draw_pos += draw_inc;
-                }
-
-                ']' => {
-                    ground.push(Tile::new(draw_pos, TileType::RIGHT));
-
-                    draw_pos += draw_inc;
-                }
-
-                '_' => {
-                    draw_pos += draw_inc;
-                }
-
-                '8' => {
-                    ground.push(Tile::new(draw_pos, TileType::CENTER));
-                    enemies.push(Enemy::new(draw_pos));
-
-                    draw_pos += draw_inc;
-                }
-
-                '4' => {
-                    ground.push(Tile::new(draw_pos, TileType::CENTER));
-                    player = Some(Player::new(draw_pos));
-
-                    draw_pos += draw_inc;
-                }
-
-                '*' => {
-                    ground.push(Tile::new(draw_pos, TileType::CENTER));
-                    barrels.push(Barrel::new(draw_pos));
-
-                    draw_pos += draw_inc;
-                }
-
-                _ => {}
-            }
-        }
 
         let mut player = player.expect("No player found!");
         let mut ui_lerp = HashMap::new();
@@ -223,17 +172,55 @@ impl Game {
 
             dim_shader,
             dim_constant,
+            draw_end_text: (false, None, false, false),
+
+            end: map_1.end,
         })
     }
 
     pub fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         if let Some(_t) = self.tics {
-            let _lock = graphics::use_shader(ctx, &self.dim_shader);
+            {
+                let _lock = graphics::use_shader(ctx, &self.dim_shader);
 
-            self.inner_draw(ctx)
+                self.inner_draw(ctx)?;
+            }
+
+            if self.draw_end_text.0 && self.draw_end_text.3 {
+                let mut draw_pos = 0.;
+
+                // You Win
+                let end_frag = &Text::new(TextFragment::new("You Win!")
+                    .font(self.consolas)
+                    .scale(Scale::uniform(50.))
+                );
+
+                let end_dimensions = end_frag.dimensions(ctx);
+
+                graphics::draw(ctx, end_frag, DrawParam::default()
+                    .dest(Point2::new((WIDTH / 2.0) - (end_dimensions.0 / 2) as f32, 50.0))
+                )?;
+    
+                // End quote
+                for line in self.end.as_ref().unwrap().split("\\n").collect::<Vec<_>>() {
+                    let end_frag = &Text::new(TextFragment::new(line)
+                        .font(self.consolas)
+                    );
+    
+                    let end_dimensions = end_frag.dimensions(ctx);
+    
+                    graphics::draw(ctx, end_frag, DrawParam::default()
+                        .dest(Point2::new((WIDTH / 2.0) - (end_dimensions.0 / 2) as f32, HEIGHT / 2. + draw_pos))
+                    )?;
+    
+                    draw_pos += 20.0;
+                }
+            }
         } else {
-            self.inner_draw(ctx)
+            self.inner_draw(ctx)?;
         }
+
+        graphics::present(ctx)
     }
 
     fn inner_draw(&mut self, ctx: &mut Context) -> GameResult<()> {
@@ -277,7 +264,7 @@ impl Game {
         // User Profile, etc..
         self.draw_ui(ctx)?;
 
-        graphics::present(ctx)
+        Ok(())
     }
 
     fn draw_ui(&mut self, ctx: &mut Context) -> GameResult<()> {
@@ -379,6 +366,30 @@ impl Game {
     }
 
     pub fn inner_update(&mut self, ctx: &mut Context) -> GameResult<Option<crate::Screen>> {
+        if self.enemies.len() == 0 {
+            self.draw_end_text.3 = true;
+
+            if self.draw_end_text.1.is_none() {
+                self.draw_end_text.1 = Some(timer::ticks(ctx));
+            }
+
+            else if !self.draw_end_text.2 {
+                if timer::ticks(ctx) - self.draw_end_text.1.unwrap() > 30 {
+                    self.draw_end_text.0 = true;
+                    self.draw_end_text.2 = true;
+                }
+            }
+
+            else {
+                self.tics = Some(1);
+
+                if self.dim_constant.rate != 0.0 {
+                    self.dim_constant.rate = lerp(self.dim_constant.rate, 0.0, 0.1);
+                    self.dim_shader.send(ctx, self.dim_constant)?;
+                }
+            }
+        }
+        
         let ferris_pos_x = self.player.pos_x;
         let ferris_pos_y = self.player.pos_y;
 
@@ -556,6 +567,8 @@ impl Game {
 
             if sys.3 > 6 {
                 self.particles.remove(i);
+
+                break;
             }
         }
 
