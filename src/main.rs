@@ -10,9 +10,9 @@ use ggez::{
 
 mod dead;
 mod game;
+mod map;
 mod menu;
 mod utils;
-mod map;
 
 mod components {
     pub mod barrel;
@@ -105,7 +105,7 @@ impl EventHandler for MyGame {
                 }
 
                 Ok(())
-            },
+            }
             Screen::Dead => self.death_screen.draw(ctx),
         }
     }
