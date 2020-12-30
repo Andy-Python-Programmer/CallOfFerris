@@ -11,6 +11,7 @@ pub struct Map {
 
     pub ground: Vec<Tile>,
     pub enemies: Vec<Enemy>,
+    pub total_enemies: i32,
     pub barrels: Vec<Barrel>,
 
     pub player: Option<Player>,
@@ -25,6 +26,7 @@ impl Map {
 
             ground: vec![],
             enemies: vec![],
+            total_enemies: 0,
             barrels: vec![],
 
             player: None,
@@ -68,6 +70,7 @@ impl Map {
                             self.enemies.push(Enemy::new(self.draw_pos));
 
                             self.draw_pos += self.draw_inc;
+                            self.total_enemies += 1;
                         }
 
                         '4' => {

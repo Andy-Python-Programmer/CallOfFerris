@@ -1,10 +1,13 @@
 [package]
 name = "call_of_ferris"
 version = "0.1.0"
-authors = ["user <andypythonappdeveloper@gmail.com>"]
+authors = ["Anhad Singh <andypythonappdeveloper@gmail.com>"]
+description = """
+A thrilling action game where your favorite Ferris the crab and the rust mascot got guns and has taken up the duty to find evildoer languages while managing to keep itself alive. 
+Take part in this awesome adventure and help Ferris be the best ever!
+"""
+repository = "https://github.com/Andy-Python-Programmer/CallOfFerris"
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 ggez = "0.5"

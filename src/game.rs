@@ -73,6 +73,7 @@ pub struct Game {
 
     draw_end_text: (bool, Option<usize>, bool, bool), // Thread Sleeped?, Current Iters, Done?, Win?
     can_die: bool,
+    total_enemies: i32
 }
 
 impl Game {
@@ -181,9 +182,9 @@ impl Game {
             dim_shader,
             dim_constant,
             draw_end_text: (false, None, false, false),
-
             end: map_1.end,
             can_die: true,
+            total_enemies: map_1.total_enemies
         })
     }
 
@@ -445,6 +446,17 @@ impl Game {
                 ))
                 .scale(Vector2 { x: 0.7, y: 0.7 }),
         )?;
+
+        let evildoers = &Text::new(
+            TextFragment::new(format!("Evildoers {}/{}", self.enemies.len(), self.total_enemies))
+                .font(self.consolas)
+                .scale(Scale::uniform(20.)),
+        );
+
+        let evildoers_dim = evildoers.dimensions(ctx);
+
+        graphics::draw(ctx, evildoers, DrawParam::default()
+    .dest(Point2::new((WIDTH - evildoers_dim.0 as f32) - 40., 20.)))?;
 
         Ok(())
     }
