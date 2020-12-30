@@ -1,6 +1,6 @@
-use std::{collections::HashMap, io::Read, sync::Mutex};
+use std::{collections::HashMap, io::Read, process::exit, sync::Mutex};
 
-use ggez::{Context, GameResult, audio::{SoundSource, Source}, event::KeyCode, graphics::{self, Color, DrawParam, Shader, Text}, mint, nalgebra::Point2, timer};
+use ggez::{Context, GameResult, audio::{SoundSource, Source}, event::KeyCode, graphics::{self, Color, DrawParam, Drawable, Shader, Text}, mint, nalgebra::Point2, timer};
 use ggez_goodies::{
     camera::{Camera, CameraDraw},
     nalgebra_glm::Vec2,
@@ -10,19 +10,14 @@ use graphics::{Font, GlBackendSpec, Image, Scale, ShaderGeneric, TextFragment};
 use mint::Vector2;
 use rand::Rng;
 
-use crate::{
-    components::{
+use crate::{HEIGHT, Screen, WIDTH, components::{
         barrel::Barrel,
         bullet::Turbofish,
         cloud::Cloud,
         enemy::Enemy,
         player::{Direction, Player},
         tile::Tile,
-    },
-    utils::{lerp, remap},
-    map::Map,
-    Screen, HEIGHT, WIDTH,
-};
+    }, map::Map, utils::{lerp, remap}};
 
 use gfx::*;
 
@@ -64,7 +59,8 @@ pub struct Game {
 
     end: Option<String>,
 
-    draw_end_text: (bool, Option<usize>, bool, bool) // Thread Sleeped?, Current Iters, Done?, Win?
+    draw_end_text: (bool, Option<usize>, bool, bool), // Thread Sleeped?, Current Iters, Done?, Win?
+    can_die: bool
 }
 
 impl Game {
@@ -175,10 +171,11 @@ impl Game {
             draw_end_text: (false, None, false, false),
 
             end: map_1.end,
+            can_die: true
         })
     }
 
-    pub fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
+    pub fn draw(&mut self, ctx: &mut Context) -> GameResult<Option<Screen>> {
         if let Some(_t) = self.tics {
             {
                 let _lock = graphics::use_shader(ctx, &self.dim_shader);
@@ -215,12 +212,82 @@ impl Game {
     
                     draw_pos += 20.0;
                 }
+
+                // Press & to go to menu screen
+                let menu_rect = graphics::Mesh::new_rectangle(
+                    ctx,
+                    graphics::DrawMode::fill(),
+                    graphics::Rect::new(
+                        (WIDTH / 2.) + 20.,
+                        (HEIGHT / 2.) + (draw_pos * 2.),
+                        220.0,
+                        40.0,
+                    ),
+                    [36.0 / 255.0, 36.0 / 255.0, 36.0 / 255.0, 0.9].into(),
+                )?;
+
+                let menu_rect_dim = menu_rect.dimensions(ctx).unwrap();
+
+                let menu_frag_to = &Text::new(TextFragment::new("Press & go to the")
+                    .font(self.consolas)
+                );
+
+                let menu_screen = &Text::new(TextFragment::new("MENU SCREEN")
+                    .font(self.consolas)
+                    .scale(Scale::uniform(20.0))
+                );
+
+                graphics::draw(ctx, &menu_rect, DrawParam::default())?;
+                graphics::draw(
+                    ctx, menu_frag_to, DrawParam::default()
+                        .dest(Point2::new((WIDTH / 2.) + 20., ((HEIGHT / 2.) + (draw_pos * 2.)) - 20.0))
+                )?;
+
+                graphics::draw(
+                    ctx, menu_screen, DrawParam::default()
+                        .dest(Point2::new((WIDTH / 2.) + 70., ((HEIGHT / 2.) + (draw_pos * 2.)) + 12.0))
+                )?;
+
+                // Press * to quit
+                let quit_rect = graphics::Mesh::new_rectangle(
+                    ctx,
+                    graphics::DrawMode::fill(),
+                    graphics::Rect::new(
+                        ((WIDTH / 2.) - menu_rect_dim.w) - 20.0,
+                        (HEIGHT / 2.) + (draw_pos * 2.),
+                        220.0,
+                        40.0,
+                    ),
+                    [36.0 / 255.0, 36.0 / 255.0, 36.0 / 255.0, 0.9].into(),
+                )?;
+
+                let quit_frag_to = &Text::new(TextFragment::new("Press * to")
+                    .font(self.consolas)
+                );
+
+                let press_quit = &Text::new(TextFragment::new("QUIT")
+                    .font(self.consolas)
+                    .scale(Scale::uniform(20.))
+                );
+
+                graphics::draw(ctx, &quit_rect, DrawParam::default())?;
+                graphics::draw(
+                    ctx, quit_frag_to, DrawParam::default()
+                        .dest(Point2::new(((WIDTH / 2.) - menu_rect_dim.w) - 20., ((HEIGHT / 2.) + (draw_pos * 2.)) - 20.))
+                )?;
+
+                graphics::draw(
+                    ctx, press_quit, DrawParam::default()
+                        .dest(Point2::new((((WIDTH / 2.) - menu_rect_dim.w) - 20.) + 90., (((HEIGHT / 2.) + (draw_pos * 2.)) - 20.) + 30.))
+                )?;
             }
         } else {
             self.inner_draw(ctx)?;
         }
 
-        graphics::present(ctx)
+        graphics::present(ctx)?;
+
+        Ok(None)
     }
 
     fn inner_draw(&mut self, ctx: &mut Context) -> GameResult<()> {
@@ -368,6 +435,7 @@ impl Game {
     pub fn inner_update(&mut self, ctx: &mut Context) -> GameResult<Option<crate::Screen>> {
         if self.enemies.len() == 0 {
             self.draw_end_text.3 = true;
+            self.can_die = false;
 
             if self.draw_end_text.1.is_none() {
                 self.draw_end_text.1 = Some(timer::ticks(ctx));
@@ -415,7 +483,9 @@ impl Game {
             .move_to(Vec2::new(self.player.pos_x, self.player.pos_y));
 
         if self.player.pos_y < -800. {
-            return Ok(Some(Screen::Dead));
+            if self.can_die {
+                return Ok(Some(Screen::Dead));
+            }
         }
 
         for i in 0..self.enemies.len() {
@@ -619,8 +689,13 @@ impl Game {
                 }
             }
             KeyCode::Up => {
-                // TODO: Add chromatic aberration on slow motion.
                 self.tics = Some(6);
+            },
+            KeyCode::Key7 => {
+                return Some(Screen::Menu);
+            }
+            KeyCode::Key8 => {
+                exit(0);
             }
             _ => (),
         }

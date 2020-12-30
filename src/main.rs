@@ -97,7 +97,15 @@ impl EventHandler for MyGame {
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         match self.screen {
             Screen::Menu => self.menu_screen.draw(ctx),
-            Screen::Play => self.game_screen.lock().unwrap().draw(ctx),
+            Screen::Play => {
+                let change = self.game_screen.lock().unwrap().draw(ctx)?;
+
+                if let Some(s) = change {
+                    self.screen = s;
+                }
+
+                Ok(())
+            },
             Screen::Dead => self.death_screen.draw(ctx),
         }
     }
