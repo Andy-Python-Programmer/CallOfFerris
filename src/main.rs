@@ -119,7 +119,7 @@ impl EventHandler for MyGame {
 
     fn key_down_event(
         &mut self,
-        _ctx: &mut Context,
+        ctx: &mut Context,
         keycode: KeyCode,
         _keymod: KeyMods,
         _repeat: bool,
@@ -136,6 +136,14 @@ impl EventHandler for MyGame {
                 let change = self.game_screen.lock().unwrap().key_press(keycode);
 
                 if let Some(s) = change {
+                    match s {
+                        Screen::Menu => {
+                            self.game_screen = game::Game::create(ctx);
+                        }
+
+                        _ => (),
+                    }
+
                     self.screen = s;
                 }
             }
