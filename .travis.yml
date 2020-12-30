@@ -1,0 +1,10 @@
+sudo: true
+language: rust
+rust:
+  - nightly
+os:
+  - windows
+
+cache: cargo
+script:
+  - cargo build --release --verbose
