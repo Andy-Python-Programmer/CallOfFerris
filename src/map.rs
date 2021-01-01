@@ -47,29 +47,43 @@ impl Map {
                 for id in line.chars() {
                     match id {
                         '[' => {
-                            self.ground.push(Tile::new(self.draw_pos, TileType::LEFT));
+                            let tile = Tile::new(self.draw_pos, asset_manager, TileType::LEFT);
+
+                            self.draw_inc = tile.width();
+                            self.ground.push(tile);
 
                             self.draw_pos += self.draw_inc;
                         }
 
                         '-' => {
-                            self.ground.push(Tile::new(self.draw_pos, TileType::CENTER));
+                            let tile = Tile::new(self.draw_pos, asset_manager, TileType::CENTER);
+
+                            self.draw_inc = tile.width();
+                            self.ground.push(tile);
 
                             self.draw_pos += self.draw_inc;
                         }
 
                         ']' => {
-                            self.ground.push(Tile::new(self.draw_pos, TileType::RIGHT));
+                            let tile = Tile::new(self.draw_pos, asset_manager, TileType::RIGHT);
+
+                            self.draw_inc = tile.width();
+                            self.ground.push(tile);
 
                             self.draw_pos += self.draw_inc;
                         }
 
                         '_' => {
+                            self.draw_inc = 100.0;
                             self.draw_pos += self.draw_inc;
                         }
 
                         '8' => {
-                            self.ground.push(Tile::new(self.draw_pos, TileType::CENTER));
+                            let tile = Tile::new(self.draw_pos, asset_manager, TileType::CENTER);
+
+                            self.draw_inc = tile.width();
+
+                            self.ground.push(tile);
                             self.enemies.push(Enemy::new(self.draw_pos, asset_manager));
 
                             self.draw_pos += self.draw_inc;
@@ -77,14 +91,22 @@ impl Map {
                         }
 
                         '4' => {
-                            self.ground.push(Tile::new(self.draw_pos, TileType::CENTER));
+                            let tile = Tile::new(self.draw_pos, asset_manager, TileType::CENTER);
+
+                            self.draw_inc = tile.width();
+
+                            self.ground.push(tile);
                             self.player = Some(Player::new(self.draw_pos));
 
                             self.draw_pos += self.draw_inc;
                         }
 
                         '*' => {
-                            self.ground.push(Tile::new(self.draw_pos, TileType::CENTER));
+                            let tile = Tile::new(self.draw_pos, asset_manager, TileType::CENTER);
+
+                            self.draw_inc = tile.width();
+
+                            self.ground.push(tile);
                             self.barrels.push(Barrel::new(self.draw_pos, asset_manager));
 
                             self.draw_pos += self.draw_inc;

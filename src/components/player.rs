@@ -4,7 +4,10 @@ use ggez_goodies::{
     nalgebra_glm::Vec2,
 };
 
-use crate::{HEIGHT, utils::{AssetManager, lerp}};
+use crate::{
+    utils::{lerp, AssetManager},
+    HEIGHT,
+};
 
 const HEIGHT2: f32 = HEIGHT / 2.;
 
@@ -104,7 +107,7 @@ impl Player {
         if self.going_boom {
             self.pos_y -= self.velocity;
 
-            if self.pos_y < 0. {
+            if self.pos_y < 0. && !gonna_boom {
                 self.going_boom = false;
 
                 self.pos_y = 0.;
@@ -117,8 +120,8 @@ impl Player {
             self.pos_y -= self.velocity;
         }
 
-        if self.pos_y < 0. && !gonna_boom && !self.going_boom {
-            self.pos_y = 0.;
+        if self.pos_y == 0.0 && self.velocity != 0.0 {
+            self.velocity = 0.0;
         }
     }
 
@@ -127,7 +130,7 @@ impl Player {
             return Some(Turbofish::new(
                 self.pos_x + 220.,
                 (-HEIGHT2 + 106.) + self.pos_y,
-                asset_manager
+                asset_manager,
             ));
         } else {
             None

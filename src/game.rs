@@ -121,7 +121,7 @@ impl Game {
                 rng.gen_range(10., 40.),
                 rng.gen_range(0.1, 0.3),
                 rng.gen_range(10., 35.),
-                &asset_manager
+                &asset_manager,
             ));
         }
 
@@ -480,15 +480,16 @@ impl Game {
         let ferris_pos_x = self.player.pos_x;
         let ferris_pos_y = self.player.pos_y;
 
+        let ferris = self.asset_manager.get_image("Some(ferris).png");
+
         let mut ferris_is_falling_down = true;
 
         for tile in &mut self.ground {
-            let tile_start = tile.pos_x;
-            let tile_end = tile.pos_x + 64.;
-
-            if ferris_pos_x >= tile_start
-                && ferris_pos_x <= tile_end
-                && ferris_pos_y + (-HEIGHT / 2.0) - 64. >= (-HEIGHT / 2.0) - 64.
+            // AABB
+            if ferris_pos_x + ferris.width() as f32 >= tile.position().pos_start.x
+                && tile.position().pos_end.x >= ferris_pos_x
+                && ferris_pos_y + ferris.height() as f32 >= tile.position().pos_start.y
+                && tile.position().pos_end.y <= ferris_pos_y
             {
                 ferris_is_falling_down = false;
 

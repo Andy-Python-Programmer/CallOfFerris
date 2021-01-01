@@ -5,7 +5,10 @@ use ggez::{
 };
 use graphics::DrawParam;
 
-use crate::{WIDTH, utils::{AssetManager, Position}};
+use crate::{
+    utils::{AssetManager, Position},
+    WIDTH,
+};
 
 pub struct Cloud {
     position: Position,
@@ -15,10 +18,16 @@ pub struct Cloud {
 }
 
 impl Cloud {
-    pub fn new(pos_x: f32, pos_y: f32, scale: f32, speed: f32, asset_manager: &AssetManager) -> Self {
+    pub fn new(
+        pos_x: f32,
+        pos_y: f32,
+        scale: f32,
+        speed: f32,
+        asset_manager: &AssetManager,
+    ) -> Self {
         let cloud = asset_manager.get_image("Some(cloud).png");
         let position = Position::new(pos_x, pos_y, cloud.width(), cloud.height());
-        
+
         Self {
             position,
             scale,
@@ -53,7 +62,12 @@ impl Cloud {
         self.position.move_by("x+", delta_time * self.speed);
 
         if self.position.pos_start.x > WIDTH + 100. {
-            self.position = Position::new(-100., self.position.pos_start.y, cloud.width(), cloud.height());
+            self.position = Position::new(
+                -100.,
+                self.position.pos_start.y,
+                cloud.width(),
+                cloud.height(),
+            );
         }
     }
 }

@@ -22,7 +22,7 @@ pub struct Position {
     pub pos_end: Point2<f32>,
 
     width: u16,
-    height: u16
+    height: u16,
 }
 
 impl Position {
@@ -30,7 +30,12 @@ impl Position {
         let pos_start = Point2::new(x, y);
         let pos_end = Point2::new(x + width as f32, y - height as f32);
 
-        Self { pos_start, pos_end, width, height }
+        Self {
+            pos_start,
+            pos_end,
+            width,
+            height,
+        }
     }
 
     pub fn is_touching(&self, x: f32, y: f32) -> bool {
@@ -55,7 +60,7 @@ impl Position {
             "y+" => {
                 self.pos_start.y += by;
                 self.pos_end.y += by;
-            },
+            }
 
             "x-" => {
                 self.pos_start.x -= by;
@@ -65,7 +70,7 @@ impl Position {
             "y-" => {
                 self.pos_start.y -= by;
                 self.pos_end.y -= by;
-            },
+            }
 
             _ => panic!(),
         }
@@ -77,14 +82,14 @@ impl Position {
             "x" => {
                 self.pos_start.x = to;
                 self.pos_end.x = to + self.width as f32;
-            },
+            }
 
             "y" => {
                 self.pos_start.y = to;
                 self.pos_end.y = to - self.height as f32;
             }
 
-            _ => panic!()
+            _ => panic!(),
         }
     }
 }
