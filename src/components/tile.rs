@@ -1,10 +1,12 @@
-use ggez::{graphics::Image, Context, GameResult};
+use ggez::{Context, GameResult};
 use ggez_goodies::{
     camera::{Camera, CameraDraw},
     nalgebra_glm::Vec2,
 };
 
-use crate::HEIGHT;
+use crate::{utils::AssetManager, HEIGHT};
+
+const HEIGHT2: f32 = HEIGHT / 2.;
 
 pub enum TileType {
     LEFT,
@@ -26,35 +28,37 @@ impl Tile {
         &mut self,
         ctx: &mut Context,
         camera: &Camera,
-        resources: &Vec<Image>,
+        asset_manager: &AssetManager,
     ) -> GameResult<()> {
-        const HEIGHT2: f32 = HEIGHT / 2.;
+        let ground_left = asset_manager.get_image("ground_left.png");
+        let ground_centre = asset_manager.get_image("ground_centre.png");
+        let ground_right = asset_manager.get_image("ground_right.png");
 
         match self.tile_type {
             TileType::LEFT => {
-                &resources[0].draw_camera(
+                ground_left.draw_camera(
                     &camera,
                     ctx,
-                    Vec2::new(self.pos_x, -HEIGHT2 + resources[0].height() as f32),
+                    Vec2::new(self.pos_x, -HEIGHT2 + ground_left.height() as f32),
                     0.0,
-                );
+                )?;
             }
 
             TileType::CENTER => {
-                &resources[1].draw_camera(
+                ground_centre.draw_camera(
                     &camera,
                     ctx,
-                    Vec2::new(self.pos_x, -HEIGHT2 + resources[0].height() as f32),
+                    Vec2::new(self.pos_x, -HEIGHT2 + ground_centre.height() as f32),
                     0.0,
-                );
+                )?;
             }
             TileType::RIGHT => {
-                &resources[2].draw_camera(
+                ground_right.draw_camera(
                     &camera,
                     ctx,
-                    Vec2::new(self.pos_x, -HEIGHT2 + resources[0].height() as f32),
+                    Vec2::new(self.pos_x, -HEIGHT2 + ground_right.height() as f32),
                     0.0,
-                );
+                )?;
             }
         }
 

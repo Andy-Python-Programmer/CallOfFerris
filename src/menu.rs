@@ -5,35 +5,33 @@ use ggez::{
     Context, GameResult,
 };
 use graphics::DrawParam;
-use std::process::exit;
+use std::{process::exit, rc::Rc};
 
-use crate::HEIGHT;
 use crate::WIDTH;
+use crate::{utils::AssetManager, HEIGHT};
 
 pub struct Menu {
-    pub consolas: graphics::Font,
-    pub ferris_ninja: graphics::Image,
-    pub logo: graphics::Image,
-    pub bg: graphics::Image,
+    asset_manager: Rc<AssetManager>,
 }
 
 impl Menu {
-    pub fn create(ctx: &mut Context) -> Self {
-        Self {
-            consolas: graphics::Font::new(ctx, "/fonts/Consolas.ttf").unwrap(),
-            ferris_ninja: graphics::Image::new(ctx, "/images/ferris_ninja.png").unwrap(),
-            logo: graphics::Image::new(ctx, "/images/logo.png").unwrap(),
-            bg: graphics::Image::new(ctx, "/images/menu_bg.png").unwrap(),
-        }
+    pub fn create(_ctx: &mut Context, asset_manager: Rc<AssetManager>) -> Self {
+        Self { asset_manager }
     }
 
     pub fn draw(&self, ctx: &mut Context) -> GameResult<()> {
+        let logo = self.asset_manager.get_image("logo.png");
+        let ferris_ninja = self.asset_manager.get_image("ferris_ninja.png");
+        let menu_bg = self.asset_manager.get_image("menu_bg.png");
+
+        let consolas = self.asset_manager.get_font("Consolas.ttf");
+
         // Clear the screen
         graphics::clear(ctx, graphics::BLACK);
 
         graphics::draw(
             ctx,
-            &self.bg,
+            &menu_bg,
             DrawParam::default()
                 .dest(Point2::new(0.0, 0.0))
                 .scale(Vector2::new(0.6, 0.5)),
@@ -41,25 +39,25 @@ impl Menu {
 
         graphics::draw(
             ctx,
-            &self.logo,
+            &logo,
             (ggez::nalgebra::Point2::new(
-                WIDTH - (self.logo.width() as f32 + 20.0),
+                WIDTH - (logo.width() as f32 + 20.0),
                 10.0,
             ),),
         )?;
 
         graphics::draw(
             ctx,
-            &self.ferris_ninja,
+            &ferris_ninja,
             (ggez::nalgebra::Point2::new(
                 WIDTH - (WIDTH - 400.0),
-                HEIGHT - (&self.ferris_ninja.height() + 140) as f32,
+                HEIGHT - (ferris_ninja.height() + 140) as f32,
             ),),
         )?;
 
         let press_and_to = TextFragment {
             text: "Press & to".to_owned(),
-            font: Some(self.consolas),
+            font: Some(consolas),
             scale: Some(Scale::uniform(15.0)),
 
             ..Default::default()
@@ -67,7 +65,7 @@ impl Menu {
 
         let press_pointer_to = TextFragment {
             text: "Press * to".to_owned(),
-            font: Some(self.consolas),
+            font: Some(consolas),
             scale: Some(Scale::uniform(15.0)),
 
             ..Default::default()
@@ -78,7 +76,7 @@ impl Menu {
             &Text::new(press_and_to),
             (ggez::nalgebra::Point2::new(
                 WIDTH - 200.0,
-                HEIGHT - (&self.ferris_ninja.height() + 30) as f32,
+                HEIGHT - (ferris_ninja.height() + 30) as f32,
             ),),
         )?;
 
@@ -87,7 +85,7 @@ impl Menu {
             graphics::DrawMode::fill(),
             graphics::Rect::new(
                 WIDTH - 200.0,
-                HEIGHT - (&self.ferris_ninja.height() + 10) as f32,
+                HEIGHT - (ferris_ninja.height() + 10) as f32,
                 220.0,
                 40.0,
             ),
@@ -99,7 +97,7 @@ impl Menu {
             graphics::DrawMode::fill(),
             graphics::Rect::new(
                 WIDTH - 200.0,
-                HEIGHT - (&self.ferris_ninja.height() - 70) as f32,
+                HEIGHT - (ferris_ninja.height() - 70) as f32,
                 220.0,
                 40.0,
             ),
@@ -108,7 +106,7 @@ impl Menu {
 
         let play_text = TextFragment {
             text: "PLAY".to_owned(),
-            font: Some(self.consolas),
+            font: Some(consolas),
             scale: Some(Scale::uniform(20.0)),
 
             ..Default::default()
@@ -116,7 +114,7 @@ impl Menu {
 
         let quit_text = TextFragment {
             text: "QUIT".to_owned(),
-            font: Some(self.consolas),
+            font: Some(consolas),
             scale: Some(Scale::uniform(20.0)),
 
             ..Default::default()
@@ -130,7 +128,7 @@ impl Menu {
             &Text::new(play_text),
             (ggez::nalgebra::Point2::new(
                 WIDTH - 170.0,
-                HEIGHT - self.ferris_ninja.height() as f32,
+                HEIGHT - ferris_ninja.height() as f32,
             ),),
         )?;
 
@@ -139,7 +137,7 @@ impl Menu {
             &Text::new(press_pointer_to),
             (ggez::nalgebra::Point2::new(
                 WIDTH - 200.0,
-                HEIGHT - (&self.ferris_ninja.height() - 50) as f32,
+                HEIGHT - (ferris_ninja.height() - 50) as f32,
             ),),
         )?;
 
@@ -148,7 +146,7 @@ impl Menu {
             &Text::new(quit_text),
             (ggez::nalgebra::Point2::new(
                 WIDTH - 170.0,
-                HEIGHT - (&self.ferris_ninja.height() - 80) as f32,
+                HEIGHT - (ferris_ninja.height() - 80) as f32,
             ),),
         )?;
 

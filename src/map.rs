@@ -1,8 +1,11 @@
-use crate::components::{
-    barrel::Barrel,
-    enemy::Enemy,
-    player::Player,
-    tile::{Tile, TileType},
+use crate::{
+    components::{
+        barrel::Barrel,
+        enemy::Enemy,
+        player::Player,
+        tile::{Tile, TileType},
+    },
+    utils::AssetManager,
 };
 
 pub struct Map {
@@ -34,7 +37,7 @@ impl Map {
         }
     }
 
-    pub fn parse(&mut self, map: String) {
+    pub fn parse(&mut self, map: String, asset_manager: &AssetManager) {
         for line in map.split("\n").collect::<Vec<_>>() {
             let exp = line.split(" ").collect::<Vec<_>>();
 
@@ -67,7 +70,7 @@ impl Map {
 
                         '8' => {
                             self.ground.push(Tile::new(self.draw_pos, TileType::CENTER));
-                            self.enemies.push(Enemy::new(self.draw_pos));
+                            self.enemies.push(Enemy::new(self.draw_pos, asset_manager));
 
                             self.draw_pos += self.draw_inc;
                             self.total_enemies += 1;
@@ -82,7 +85,7 @@ impl Map {
 
                         '*' => {
                             self.ground.push(Tile::new(self.draw_pos, TileType::CENTER));
-                            self.barrels.push(Barrel::new(self.draw_pos));
+                            self.barrels.push(Barrel::new(self.draw_pos, asset_manager));
 
                             self.draw_pos += self.draw_inc;
                         }

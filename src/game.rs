@@ -1,7 +1,7 @@
-use std::{collections::HashMap, io::Read, process::exit, sync::Mutex};
+use std::{collections::HashMap, io::Read, process::exit, rc::Rc, sync::Mutex};
 
 use ggez::{
-    audio::{SoundSource, Source},
+    audio::SoundSource,
     event::KeyCode,
     graphics::{self, Color, DrawParam, Drawable, Shader, Text},
     mint,
@@ -13,7 +13,7 @@ use ggez_goodies::{
     nalgebra_glm::Vec2,
     particle::{EmissionShape, ParticleSystem, ParticleSystemBuilder, Transition},
 };
-use graphics::{Font, GlBackendSpec, Image, Scale, ShaderGeneric, TextFragment};
+use graphics::{Font, GlBackendSpec, Scale, ShaderGeneric, TextFragment};
 use mint::Vector2;
 use rand::Rng;
 
@@ -27,7 +27,7 @@ use crate::{
         tile::Tile,
     },
     map::Map,
-    utils::{lerp, remap},
+    utils::{lerp, remap, AssetManager},
     Screen, HEIGHT, WIDTH,
 };
 
@@ -39,6 +39,8 @@ gfx_defines! {
     }
 }
 
+const HEIGHT2: f32 = HEIGHT / 2.;
+
 pub struct Game {
     ground: Vec<Tile>,
     clouds: Vec<Cloud>,
@@ -48,14 +50,7 @@ pub struct Game {
     player_bullets: Vec<Turbofish>,
     player: Player,
 
-    ground_resources: Vec<Image>,
-    enemy_resources: Vec<Image>,
-    player_resources: Vec<Image>,
-    bullet_resources: Vec<Image>,
-    ui_resources: Vec<Image>,
-    audio_resources: Vec<Source>,
-    barrel_resources: Vec<Image>,
-    cloud_resources: Vec<Image>,
+    asset_manager: Rc<AssetManager>,
 
     consolas: Font,
 
@@ -73,11 +68,11 @@ pub struct Game {
 
     draw_end_text: (bool, Option<usize>, bool, bool), // Thread Sleeped?, Current Iters, Done?, Win?
     can_die: bool,
-    total_enemies: i32
+    total_enemies: i32,
 }
 
 impl Game {
-    pub fn create(ctx: &mut Context) -> Mutex<Self> {
+    pub fn create(ctx: &mut Context, asset_manager: Rc<AssetManager>) -> Mutex<Self> {
         let mut camera = Camera::new(WIDTH as u32, HEIGHT as u32, WIDTH, HEIGHT);
         let mut map = ggez::filesystem::open(ctx, "/maps/01.map").unwrap();
 
@@ -88,7 +83,7 @@ impl Game {
 
         let mut map_1 = Map::new();
 
-        map_1.parse(buffer);
+        map_1.parse(buffer, &asset_manager);
 
         let ground = map_1.ground;
         let enemies = map_1.enemies;
@@ -126,6 +121,7 @@ impl Game {
                 rng.gen_range(10., 40.),
                 rng.gen_range(0.1, 0.3),
                 rng.gen_range(10., 35.),
+                &asset_manager
             ));
         }
 
@@ -136,39 +132,9 @@ impl Game {
             player,
             barrels,
 
+            asset_manager,
+
             player_bullets: vec![],
-
-            ground_resources: vec![
-                Image::new(ctx, "/images/ground_left.png").unwrap(),
-                Image::new(ctx, "/images/ground_centre.png").unwrap(),
-                Image::new(ctx, "/images/ground_right.png").unwrap(),
-            ],
-
-            enemy_resources: vec![
-                Image::new(ctx, "/images/gopher.png").unwrap(),
-                Image::new(ctx, "/images/Some(gun).png").unwrap(),
-            ],
-
-            player_resources: vec![
-                Image::new(ctx, "/images/Some(ferris).png").unwrap(),
-                Image::new(ctx, "/images/Some(sniper).png").unwrap(),
-            ],
-
-            bullet_resources: vec![Image::new(ctx, "/images/Some(turbofish).png").unwrap()],
-
-            ui_resources: vec![
-                Image::new(ctx, "/images/Some(profile).png").unwrap(),
-                Image::new(ctx, "/images/Some(fish).png").unwrap(),
-            ],
-
-            barrel_resources: vec![Image::new(ctx, "/images/Some(barrel).png").unwrap()],
-
-            cloud_resources: vec![Image::new(ctx, "/images/Some(cloud).png").unwrap()],
-
-            audio_resources: vec![
-                Source::new(ctx, "/audio/Some(turbofish_shoot).mp3").unwrap(),
-                Source::new(ctx, "/audio/Some(explode).mp3").unwrap(),
-            ],
 
             camera,
 
@@ -184,7 +150,7 @@ impl Game {
             draw_end_text: (false, None, false, false),
             end: map_1.end,
             can_die: true,
-            total_enemies: map_1.total_enemies
+            total_enemies: map_1.total_enemies,
         })
     }
 
@@ -332,31 +298,30 @@ impl Game {
 
         // Clouds
         for cloud in &mut self.clouds {
-            cloud.draw(ctx, &self.cloud_resources)?;
+            cloud.draw(ctx, &self.asset_manager)?;
         }
 
         // Ground
         for tile in &mut self.ground {
-            tile.draw(ctx, &self.camera, &self.ground_resources)?;
+            tile.draw(ctx, &self.camera, &self.asset_manager)?;
         }
 
         // Enemies
         for enemy in &mut self.enemies {
-            enemy.draw(ctx, &self.camera, &self.enemy_resources)?;
+            enemy.draw(ctx, &self.camera, &self.asset_manager)?;
         }
 
         // Barrel
         for boom in &mut self.barrels {
-            boom.draw(ctx, &self.camera, &self.barrel_resources)?;
+            boom.draw(ctx, &self.camera, &self.asset_manager)?;
         }
 
         // Player
-        self.player
-            .draw(ctx, &self.camera, &self.player_resources)?;
+        self.player.draw(ctx, &self.camera, &self.asset_manager)?;
 
         // Player Bullets
         for fish in &mut self.player_bullets {
-            fish.draw(ctx, &self.camera, &self.bullet_resources)?;
+            fish.draw(ctx, &self.camera, &self.asset_manager)?;
         }
 
         // Particles
@@ -372,9 +337,12 @@ impl Game {
     }
 
     fn draw_ui(&mut self, ctx: &mut Context) -> GameResult<()> {
+        let profile = self.asset_manager.get_image("Some(profile).png");
+        let fish = self.asset_manager.get_image("Some(fish).png");
+
         graphics::draw(
             ctx,
-            &self.ui_resources[0],
+            &profile,
             DrawParam::default()
                 .dest(Point2::new(10.0, 10.0))
                 .scale(Vector2 { x: 0.5, y: 0.5 }),
@@ -384,8 +352,8 @@ impl Game {
             ctx,
             graphics::DrawMode::fill(),
             graphics::Rect::new(
-                ((self.ui_resources[0].width() / 2) + 10) as f32,
-                (self.ui_resources[0].height() / 3) as f32,
+                ((profile.width() / 2) + 10) as f32,
+                (profile.height() / 3) as f32,
                 150.,
                 15.,
             ),
@@ -396,8 +364,8 @@ impl Game {
             ctx,
             graphics::DrawMode::fill(),
             graphics::Rect::new(
-                ((self.ui_resources[0].width() / 2) + 10) as f32,
-                (self.ui_resources[0].height() / 5) as f32,
+                ((profile.width() / 2) + 10) as f32,
+                (profile.height() / 5) as f32,
                 150.,
                 15.,
             ),
@@ -408,8 +376,8 @@ impl Game {
             ctx,
             graphics::DrawMode::fill(),
             graphics::Rect::new(
-                ((self.ui_resources[0].width() / 2) + 10) as f32,
-                (self.ui_resources[0].height() / 3) as f32,
+                ((profile.width() / 2) + 10) as f32,
+                (profile.height() / 3) as f32,
                 remap(self.player.ammo as f32, 0., 10., 0., 150.),
                 15.,
             ),
@@ -420,8 +388,8 @@ impl Game {
             ctx,
             graphics::DrawMode::fill(),
             graphics::Rect::new(
-                ((self.ui_resources[0].width() / 2) + 10) as f32,
-                (self.ui_resources[0].height() / 5) as f32,
+                ((profile.width() / 2) + 10) as f32,
+                (profile.height() / 5) as f32,
                 remap(self.player.health as f32, 0., 100., 0., 150.),
                 15.,
             ),
@@ -438,25 +406,32 @@ impl Game {
 
         graphics::draw(
             ctx,
-            &self.ui_resources[1],
+            &fish,
             DrawParam::default()
                 .dest(Point2::new(
-                    ((self.ui_resources[0].width() / 2) - 10) as f32,
-                    (self.ui_resources[0].height() / 3) as f32,
+                    ((profile.width() / 2) - 10) as f32,
+                    (profile.height() / 3) as f32,
                 ))
                 .scale(Vector2 { x: 0.7, y: 0.7 }),
         )?;
 
         let evildoers = &Text::new(
-            TextFragment::new(format!("Evildoers {}/{}", self.enemies.len(), self.total_enemies))
-                .font(self.consolas)
-                .scale(Scale::uniform(20.)),
+            TextFragment::new(format!(
+                "Evildoers {}/{}",
+                self.enemies.len(),
+                self.total_enemies
+            ))
+            .font(self.consolas)
+            .scale(Scale::uniform(20.)),
         );
 
         let evildoers_dim = evildoers.dimensions(ctx);
 
-        graphics::draw(ctx, evildoers, DrawParam::default()
-    .dest(Point2::new((WIDTH - evildoers_dim.0 as f32) - 40., 20.)))?;
+        graphics::draw(
+            ctx,
+            evildoers,
+            DrawParam::default().dest(Point2::new((WIDTH - evildoers_dim.0 as f32) - 40., 20.)),
+        )?;
 
         Ok(())
     }
@@ -533,18 +508,24 @@ impl Game {
         }
 
         for i in 0..self.enemies.len() {
-            let go = &self.enemies[i];
+            let go = &mut self.enemies[i];
 
-            let go_start_x = go.pos_x;
-            let go_end_x = go.pos_x + 100.;
+            go.update(&self.player);
 
             let mut done: bool = false;
 
             for j in 0..self.player_bullets.len() {
                 let fish = &self.player_bullets[j];
 
-                if fish.pos_x >= go_start_x && fish.pos_x <= go_end_x {
-                    const HEIGHT2: f32 = HEIGHT / 2.;
+                if go
+                    .position()
+                    .is_touching(fish.position().pos_start.x, fish.position().pos_start.y)
+                {
+                    let mut explode_sound = self
+                        .asset_manager
+                        .get_sound("Some(explode).mp3")
+                        .lock()
+                        .unwrap();
 
                     self.particles.push((
                         ParticleSystemBuilder::new(ctx)
@@ -565,14 +546,12 @@ impl Game {
                                 100.0,
                             ))
                             .build(),
-                        go_start_x,
+                        go.position().pos_start.x,
                         -HEIGHT2 + 70.,
                         0,
                     ));
 
-                    self.audio_resources[1]
-                        .play()
-                        .expect("Cannot play Some(explode).mp3");
+                    explode_sound.play().expect("Cannot play Some(explode).mp3");
 
                     self.enemies.remove(i);
                     self.player_bullets.remove(j);
@@ -595,20 +574,23 @@ impl Game {
         }
 
         for cloud in &mut self.clouds {
-            cloud.update(ctx);
+            cloud.update(ctx, &self.asset_manager);
         }
 
         for i in 0..self.barrels.len() {
-            let barrel = &self.barrels[i];
-
-            let barrel_start_x = barrel.pos_x;
-            let barrel_end_x = barrel.pos_x + 91.;
+            let barrel_position = self.barrels[i].position();
 
             let mut done: bool = false;
 
             for fish in &self.player_bullets {
-                if fish.pos_x >= barrel_start_x && fish.pos_x <= barrel_end_x {
-                    const HEIGHT2: f32 = HEIGHT / 2.;
+                if barrel_position
+                    .is_touching(fish.position().pos_start.x, fish.position().pos_start.y)
+                {
+                    let mut explode_sound = self
+                        .asset_manager
+                        .get_sound("Some(explode).mp3")
+                        .lock()
+                        .unwrap();
 
                     self.particles.push((
                         ParticleSystemBuilder::new(ctx)
@@ -626,14 +608,12 @@ impl Game {
                                 200.0,
                             ))
                             .build(),
-                        barrel_start_x,
+                        barrel_position.pos_start.x,
                         -HEIGHT2 + 70.,
                         0,
                     ));
 
-                    self.audio_resources[1]
-                        .play()
-                        .expect("Cannot play Some(explode).mp3");
+                    explode_sound.play().expect("Cannot play Some(explode).mp3");
 
                     self.barrels.remove(i);
 
@@ -720,9 +700,14 @@ impl Game {
             }
             KeyCode::S => {
                 let ui_lerp = self.ui_lerp.clone();
+                let mut turbofish_shoot = self
+                    .asset_manager
+                    .get_sound("Some(turbofish_shoot).mp3")
+                    .lock()
+                    .unwrap();
 
-                if let Some(fish) = self.player.shoot() {
-                    self.audio_resources[0]
+                if let Some(fish) = self.player.shoot(&self.asset_manager) {
+                    turbofish_shoot
                         .play()
                         .expect("Cannot play Some(turbofish_shoot).mp3");
 

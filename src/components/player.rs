@@ -1,10 +1,12 @@
-use ggez::{graphics::Image, Context, GameResult};
+use ggez::{Context, GameResult};
 use ggez_goodies::{
     camera::{Camera, CameraDraw},
     nalgebra_glm::Vec2,
 };
 
-use crate::{utils::lerp, HEIGHT};
+use crate::{HEIGHT, utils::{AssetManager, lerp}};
+
+const HEIGHT2: f32 = HEIGHT / 2.;
 
 use super::bullet::Turbofish;
 
@@ -51,23 +53,24 @@ impl Player {
         &mut self,
         ctx: &mut Context,
         camera: &Camera,
-        resources: &Vec<Image>,
+        asset_manager: &AssetManager,
     ) -> GameResult<()> {
-        const HEIGHT2: f32 = HEIGHT / 2.;
+        let ferris = asset_manager.get_image("Some(ferris).png");
+        let turbofish_sniper = asset_manager.get_image("Some(sniper).png");
 
-        &resources[0].draw_camera(
+        ferris.draw_camera(
             &camera,
             ctx,
             Vec2::new(self.pos_x, (-HEIGHT2 + 155.) + self.pos_y),
             0.0,
-        );
+        )?;
 
-        &resources[1].draw_camera(
+        turbofish_sniper.draw_camera(
             &camera,
             ctx,
             Vec2::new(self.pos_x + 30., (-HEIGHT2 + 120.) + self.pos_y),
             0.0,
-        );
+        )?;
 
         Ok(())
     }
@@ -119,13 +122,12 @@ impl Player {
         }
     }
 
-    pub fn shoot(&mut self) -> Option<Turbofish> {
-        const HEIGHT2: f32 = HEIGHT / 2.;
-
+    pub fn shoot(&mut self, asset_manager: &AssetManager) -> Option<Turbofish> {
         if self.ammo as i32 != 0 {
             return Some(Turbofish::new(
                 self.pos_x + 220.,
                 (-HEIGHT2 + 106.) + self.pos_y,
+                asset_manager
             ));
         } else {
             None

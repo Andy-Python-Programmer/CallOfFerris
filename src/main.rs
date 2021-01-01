@@ -1,12 +1,16 @@
-// https://www.reddit.com/r/rust/comments/k35yy7/call_of_ferris_ownership_war/
+//! # Call of Ferris
+//!
+//! Call of Ferris is a thrilling action game where your favorite Ferris the crab and the rust mascot got guns and has taken up the duty to find evildoer languages while managing to keep itself alive.
+//! Take part in this awesome adventure and help Ferris be the best ever!
 
-use std::sync::Mutex;
+use std::{fs, rc::Rc, sync::Mutex};
 
 use ggez::{conf::WindowMode, event::KeyCode, event::KeyMods, Context, ContextBuilder, GameResult};
 use ggez::{
     conf::WindowSetup,
     event::{self, EventHandler},
 };
+use utils::AssetManager;
 
 mod dead;
 mod game;
@@ -26,6 +30,28 @@ mod components {
 const WIDTH: f32 = 1000.0;
 const HEIGHT: f32 = 600.0;
 
+fn load_assets(ctx: &mut Context) -> AssetManager {
+    let mut asset_manager = AssetManager::new();
+
+    let images_dir = fs::read_dir("./resources/images/").unwrap();
+    let fonts_dir = fs::read_dir("./resources/fonts/").unwrap();
+    let audio_dir = fs::read_dir("./resources/audio/").unwrap();
+
+    for image in images_dir {
+        asset_manager.load_image(ctx, image.unwrap().file_name().to_str().unwrap());
+    }
+
+    for font in fonts_dir {
+        asset_manager.load_font(ctx, font.unwrap().file_name().to_str().unwrap());
+    }
+
+    for audio in audio_dir {
+        asset_manager.load_sound(ctx, audio.unwrap().file_name().to_str().unwrap());
+    }
+
+    asset_manager
+}
+
 fn main() -> GameResult<()> {
     // The resources directory contains all of the assets.
     // Including sprites and audio files.
@@ -42,8 +68,10 @@ fn main() -> GameResult<()> {
         )
         .build()?;
 
+    let asset_manager = load_assets(&mut ctx);
+
     // Create an instance of your event handler.
-    let mut game = MyGame::new(&mut ctx);
+    let mut game = Game::new(&mut ctx, asset_manager);
 
     // Run!
     match event::run(&mut ctx, &mut event_loop, &mut game) {
@@ -58,26 +86,32 @@ pub enum Screen {
     Dead,
 }
 
-pub struct MyGame {
+pub struct Game {
     screen: Screen,
     menu_screen: menu::Menu,
     game_screen: Mutex<game::Game>,
     death_screen: dead::Death,
+
+    asset_manager: Rc<AssetManager>,
 }
 
-impl MyGame {
-    pub fn new(ctx: &mut Context) -> Self {
+impl Game {
+    pub fn new(ctx: &mut Context, asset_manager: AssetManager) -> Self {
+        let asset_manager = Rc::new(asset_manager);
+
         Self {
             screen: Screen::Menu,
 
-            menu_screen: menu::Menu::create(ctx),
-            game_screen: game::Game::create(ctx),
+            menu_screen: menu::Menu::create(ctx, asset_manager.clone()),
+            game_screen: game::Game::create(ctx, asset_manager.clone()),
             death_screen: dead::Death::spawn(ctx),
+
+            asset_manager,
         }
     }
 }
 
-impl EventHandler for MyGame {
+impl EventHandler for Game {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         match self.screen {
             Screen::Menu => self.menu_screen.update(ctx),
@@ -138,7 +172,7 @@ impl EventHandler for MyGame {
                 if let Some(s) = change {
                     match s {
                         Screen::Menu => {
-                            self.game_screen = game::Game::create(ctx);
+                            self.game_screen = game::Game::create(ctx, self.asset_manager.clone());
                         }
 
                         _ => (),
