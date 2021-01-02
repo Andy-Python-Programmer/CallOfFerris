@@ -9,113 +9,130 @@ use crate::{
 };
 
 pub struct Map {
-    draw_pos: f32,
-    draw_inc: f32,
-
     pub ground: Vec<Tile>,
     pub enemies: Vec<Enemy>,
-    pub total_enemies: i32,
     pub barrels: Vec<Barrel>,
+    pub player: Player,
 
-    pub player: Option<Player>,
+    pub total_enemies: i32,
+
     pub end: Option<String>,
+    pub using: Option<(String, f32)>,
 }
 
 impl Map {
-    pub fn new() -> Self {
-        Self {
-            draw_pos: 0.,
-            draw_inc: 64.,
+    pub fn parse(map: String, asset_manager: &AssetManager) -> Self {
+        let mut draw_pos = 0.;
 
-            ground: vec![],
-            enemies: vec![],
-            total_enemies: 0,
-            barrels: vec![],
+        #[allow(unused_assignments)]
+        let mut draw_inc = 64.;
 
-            player: None,
-            end: None,
-        }
-    }
+        let mut ground = vec![];
+        let mut enemies = vec![];
+        let mut total_enemies = 0;
+        let mut barrels = vec![];
 
-    pub fn parse(&mut self, map: String, asset_manager: &AssetManager) {
+        let mut player = None;
+
+        let mut end = None;
+        let mut using = None;
+
         for line in map.split("\n").collect::<Vec<_>>() {
             let exp = line.split(" ").collect::<Vec<_>>();
 
             if exp[0].starts_with(".end") {
-                self.end = Some(exp[1..].join(" "));
+                end = Some(exp[1..].join(" "));
+            } else if exp[0].starts_with(".using") {
+                using = Some((exp[1..].join(" ").trim().to_string(), 1.0));
+            } else if exp[0].starts_with(".comment") {
+                // Do nothing. ¯\_(ツ)_/¯
             } else {
                 for id in line.chars() {
                     match id {
                         '[' => {
-                            let tile = Tile::new(self.draw_pos, asset_manager, TileType::LEFT);
+                            let tile = Tile::new(draw_pos, asset_manager, TileType::LEFT);
 
-                            self.draw_inc = tile.width();
-                            self.ground.push(tile);
+                            draw_inc = tile.width();
+                            ground.push(tile);
 
-                            self.draw_pos += self.draw_inc;
+                            draw_pos += draw_inc;
                         }
 
                         '-' => {
-                            let tile = Tile::new(self.draw_pos, asset_manager, TileType::CENTER);
+                            let tile = Tile::new(draw_pos, asset_manager, TileType::CENTER);
 
-                            self.draw_inc = tile.width();
-                            self.ground.push(tile);
+                            draw_inc = tile.width();
+                            ground.push(tile);
 
-                            self.draw_pos += self.draw_inc;
+                            draw_pos += draw_inc;
                         }
 
                         ']' => {
-                            let tile = Tile::new(self.draw_pos, asset_manager, TileType::RIGHT);
+                            let tile = Tile::new(draw_pos, asset_manager, TileType::RIGHT);
 
-                            self.draw_inc = tile.width();
-                            self.ground.push(tile);
+                            draw_inc = tile.width();
+                            ground.push(tile);
 
-                            self.draw_pos += self.draw_inc;
+                            draw_pos += draw_inc;
                         }
 
                         '_' => {
-                            self.draw_inc = 100.0;
-                            self.draw_pos += self.draw_inc;
+                            draw_inc = 100.0;
+                            draw_pos += draw_inc;
                         }
 
                         '8' => {
-                            let tile = Tile::new(self.draw_pos, asset_manager, TileType::CENTER);
+                            let tile = Tile::new(draw_pos, asset_manager, TileType::CENTER);
 
-                            self.draw_inc = tile.width();
+                            draw_inc = tile.width();
 
-                            self.ground.push(tile);
-                            self.enemies.push(Enemy::new(self.draw_pos, asset_manager));
+                            ground.push(tile);
+                            enemies.push(Enemy::new(draw_pos, asset_manager));
 
-                            self.draw_pos += self.draw_inc;
-                            self.total_enemies += 1;
+                            draw_pos += draw_inc;
+                            total_enemies += 1;
                         }
 
                         '4' => {
-                            let tile = Tile::new(self.draw_pos, asset_manager, TileType::CENTER);
+                            let tile = Tile::new(draw_pos, asset_manager, TileType::CENTER);
 
-                            self.draw_inc = tile.width();
+                            draw_inc = tile.width();
 
-                            self.ground.push(tile);
-                            self.player = Some(Player::new(self.draw_pos));
+                            ground.push(tile);
+                            player = Some(Player::new(draw_pos));
 
-                            self.draw_pos += self.draw_inc;
+                            draw_pos += draw_inc;
                         }
 
                         '*' => {
-                            let tile = Tile::new(self.draw_pos, asset_manager, TileType::CENTER);
+                            let tile = Tile::new(draw_pos, asset_manager, TileType::CENTER);
 
-                            self.draw_inc = tile.width();
+                            draw_inc = tile.width();
 
-                            self.ground.push(tile);
-                            self.barrels.push(Barrel::new(self.draw_pos, asset_manager));
+                            ground.push(tile);
+                            barrels.push(Barrel::new(draw_pos, asset_manager));
 
-                            self.draw_pos += self.draw_inc;
+                            draw_pos += draw_inc;
                         }
 
                         _ => {}
                     }
                 }
             }
+        }
+
+        let player = player.unwrap();
+
+        Self {
+            ground,
+            enemies,
+            total_enemies,
+            barrels,
+
+            player,
+
+            end,
+            using,
         }
     }
 }

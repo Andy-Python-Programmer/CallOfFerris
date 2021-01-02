@@ -21,8 +21,8 @@ pub struct Position {
     pub pos_start: Point2<f32>,
     pub pos_end: Point2<f32>,
 
-    width: u16,
-    height: u16,
+    pub width: u16,
+    pub height: u16,
 }
 
 impl Position {

@@ -11,7 +11,10 @@ use crate::{
 
 const HEIGHT2: f32 = HEIGHT / 2.;
 
-use super::bullet::Turbofish;
+use super::{
+    bullet::{Grappling, PlayerWeapon, Turbofish},
+    enemy::Enemy,
+};
 
 pub enum Direction {
     Left,
@@ -125,13 +128,39 @@ impl Player {
         }
     }
 
-    pub fn shoot(&mut self, asset_manager: &AssetManager) -> Option<Turbofish> {
+    pub fn shoot(
+        &mut self,
+        asset_manager: &AssetManager,
+        gun: &str,
+        enemies: &Vec<Enemy>,
+    ) -> Option<PlayerWeapon> {
         if self.ammo as i32 != 0 {
-            return Some(Turbofish::new(
-                self.pos_x + 220.,
-                (-HEIGHT2 + 106.) + self.pos_y,
-                asset_manager,
-            ));
+            match gun {
+                "Turbofish Gun" => Some(PlayerWeapon::Turbofish(Turbofish::new(
+                    self.pos_x + 220.,
+                    (-HEIGHT2 + 106.) + self.pos_y,
+                    asset_manager,
+                ))),
+
+                "Grappling Gun" => {
+                    let gun = Grappling::new(
+                        self.pos_x + 150.,
+                        (-HEIGHT2 + 106.) + self.pos_y,
+                        asset_manager,
+                        enemies,
+                    );
+
+                    if let Some(grapple) = gun {
+                        Some(PlayerWeapon::Grappling(grapple))
+                    } else {
+                        None
+                    }
+                }
+
+                _ => {
+                    panic!()
+                }
+            }
         } else {
             None
         }

@@ -18,14 +18,7 @@ use mint::Vector2;
 use rand::Rng;
 
 use crate::{
-    components::{
-        barrel::Barrel,
-        bullet::Turbofish,
-        cloud::Cloud,
-        enemy::Enemy,
-        player::{Direction, Player},
-        tile::Tile,
-    },
+    components::{bullet::PlayerWeapon, cloud::Cloud, player::Direction},
     map::Map,
     utils::{lerp, remap, AssetManager},
     Screen, HEIGHT, WIDTH,
@@ -42,13 +35,10 @@ gfx_defines! {
 const HEIGHT2: f32 = HEIGHT / 2.;
 
 pub struct Game {
-    ground: Vec<Tile>,
+    map: Map,
     clouds: Vec<Cloud>,
-    enemies: Vec<Enemy>,
-    barrels: Vec<Barrel>,
 
-    player_bullets: Vec<Turbofish>,
-    player: Player,
+    player_bullets: Vec<PlayerWeapon>,
 
     asset_manager: Rc<AssetManager>,
 
@@ -64,11 +54,8 @@ pub struct Game {
     dim_shader: ShaderGeneric<GlBackendSpec, Dim>,
     dim_constant: Dim,
 
-    end: Option<String>,
-
     draw_end_text: (bool, Option<usize>, bool, bool), // Thread Sleeped?, Current Iters, Done?, Win?
     can_die: bool,
-    total_enemies: i32,
 }
 
 impl Game {
@@ -81,16 +68,9 @@ impl Game {
         let mut buffer = String::new();
         map.read_to_string(&mut buffer).unwrap();
 
-        let mut map_1 = Map::new();
+        let mut map = Map::parse(buffer, &asset_manager);
 
-        map_1.parse(buffer, &asset_manager);
-
-        let ground = map_1.ground;
-        let enemies = map_1.enemies;
-        let barrels = map_1.barrels;
         let mut clouds = vec![];
-
-        let player = map_1.player;
 
         let dim_constant = Dim { rate: 1.0 };
 
@@ -104,16 +84,16 @@ impl Game {
         )
         .unwrap();
 
-        let mut player = player.expect("No player found!");
         let mut ui_lerp = HashMap::new();
 
-        ui_lerp.insert(String::from("ammo"), player.ammo as f32);
-        ui_lerp.insert(String::from("health"), player.health as f32);
+        ui_lerp.insert(String::from("ammo"), map.player.ammo as f32);
+        ui_lerp.insert(String::from("health"), map.player.health as f32);
+        ui_lerp.insert(String::from("using"), map.using.as_ref().unwrap().1);
 
-        player.pos_y += 40.;
-        player.going_boom = true;
+        map.player.pos_y += 40.;
+        map.player.going_boom = true;
 
-        camera.move_to(Vec2::new(player.pos_x, player.pos_y));
+        camera.move_to(Vec2::new(map.player.pos_x, map.player.pos_y));
 
         for _ in 0..rng.gen_range(5, 7) {
             clouds.push(Cloud::new(
@@ -126,11 +106,9 @@ impl Game {
         }
 
         Mutex::new(Self {
-            ground,
+            map,
+
             clouds,
-            enemies,
-            player,
-            barrels,
 
             asset_manager,
 
@@ -148,9 +126,7 @@ impl Game {
             dim_shader,
             dim_constant,
             draw_end_text: (false, None, false, false),
-            end: map_1.end,
             can_die: true,
-            total_enemies: map_1.total_enemies,
         })
     }
 
@@ -184,7 +160,14 @@ impl Game {
                 )?;
 
                 // End quote
-                for line in self.end.as_ref().unwrap().split("\\n").collect::<Vec<_>>() {
+                for line in self
+                    .map
+                    .end
+                    .as_ref()
+                    .unwrap()
+                    .split("\\n")
+                    .collect::<Vec<_>>()
+                {
                     let end_frag = &Text::new(TextFragment::new(line).font(self.consolas));
 
                     let end_dimensions = end_frag.dimensions(ctx);
@@ -302,26 +285,35 @@ impl Game {
         }
 
         // Ground
-        for tile in &mut self.ground {
+        for tile in &mut self.map.ground {
             tile.draw(ctx, &self.camera, &self.asset_manager)?;
         }
 
         // Enemies
-        for enemy in &mut self.enemies {
+        for enemy in &mut self.map.enemies {
             enemy.draw(ctx, &self.camera, &self.asset_manager)?;
         }
 
         // Barrel
-        for boom in &mut self.barrels {
+        for boom in &mut self.map.barrels {
             boom.draw(ctx, &self.camera, &self.asset_manager)?;
         }
 
         // Player
-        self.player.draw(ctx, &self.camera, &self.asset_manager)?;
+        self.map
+            .player
+            .draw(ctx, &self.camera, &self.asset_manager)?;
 
         // Player Bullets
-        for fish in &mut self.player_bullets {
-            fish.draw(ctx, &self.camera, &self.asset_manager)?;
+        for fish_ in &mut self.player_bullets {
+            match fish_ {
+                PlayerWeapon::Turbofish(fish) => {
+                    fish.draw(ctx, &self.camera, &self.asset_manager)?;
+                }
+                PlayerWeapon::Grappling(grapple) => {
+                    grapple.draw(ctx, &self.camera, &self.asset_manager)?;
+                }
+            }
         }
 
         // Particles
@@ -378,7 +370,7 @@ impl Game {
             graphics::Rect::new(
                 ((profile.width() / 2) + 10) as f32,
                 (profile.height() / 3) as f32,
-                remap(self.player.ammo as f32, 0., 10., 0., 150.),
+                remap(self.map.player.ammo as f32, 0., 10., 0., 150.),
                 15.,
             ),
             Color::from_rgb(21, 156, 228),
@@ -390,7 +382,7 @@ impl Game {
             graphics::Rect::new(
                 ((profile.width() / 2) + 10) as f32,
                 (profile.height() / 5) as f32,
-                remap(self.player.health as f32, 0., 100., 0., 150.),
+                remap(self.map.player.health as f32, 0., 100., 0., 150.),
                 15.,
             ),
             Color::from_rgb(34, 205, 124),
@@ -418,8 +410,8 @@ impl Game {
         let evildoers = &Text::new(
             TextFragment::new(format!(
                 "Evildoers {}/{}",
-                self.enemies.len(),
-                self.total_enemies
+                self.map.enemies.len(),
+                self.map.total_enemies
             ))
             .font(self.consolas)
             .scale(Scale::uniform(20.)),
@@ -431,6 +423,20 @@ impl Game {
             ctx,
             evildoers,
             DrawParam::default().dest(Point2::new((WIDTH - evildoers_dim.0 as f32) - 40., 20.)),
+        )?;
+
+        let info = &Text::new(
+            TextFragment::new(format!("Using {}", self.map.using.as_ref().unwrap().0))
+                .font(self.consolas)
+                .color([1.0, 1.0, 1.0, self.map.using.as_ref().unwrap().1].into()),
+        );
+
+        let info_dim = info.dimensions(ctx);
+
+        graphics::draw(
+            ctx,
+            info,
+            DrawParam::default().dest(Point2::new((WIDTH / 2.) - (info_dim.0 / 2) as f32, 150.)),
         )?;
 
         Ok(())
@@ -456,7 +462,7 @@ impl Game {
     }
 
     pub fn inner_update(&mut self, ctx: &mut Context) -> GameResult<Option<crate::Screen>> {
-        if self.enemies.len() == 0 {
+        if self.map.enemies.len() == 0 {
             self.draw_end_text.3 = true;
             self.can_die = false;
 
@@ -477,14 +483,14 @@ impl Game {
             }
         }
 
-        let ferris_pos_x = self.player.pos_x;
-        let ferris_pos_y = self.player.pos_y;
+        let ferris_pos_x = self.map.player.pos_x;
+        let ferris_pos_y = self.map.player.pos_y;
 
         let ferris = self.asset_manager.get_image("Some(ferris).png");
 
         let mut ferris_is_falling_down = true;
 
-        for tile in &mut self.ground {
+        for tile in &mut self.map.ground {
             // AABB
             if ferris_pos_x + ferris.width() as f32 >= tile.position().pos_start.x
                 && tile.position().pos_end.x >= ferris_pos_x
@@ -497,69 +503,74 @@ impl Game {
             }
         }
 
-        self.player.update(ferris_is_falling_down);
+        self.map.player.update(ferris_is_falling_down);
 
         self.camera
-            .move_to(Vec2::new(self.player.pos_x, self.player.pos_y));
+            .move_to(Vec2::new(self.map.player.pos_x, self.map.player.pos_y));
 
-        if self.player.pos_y < -800. {
+        if self.map.player.pos_y < -800. {
             if self.can_die {
                 return Ok(Some(Screen::Dead));
             }
         }
 
-        for i in 0..self.enemies.len() {
-            let go = &mut self.enemies[i];
+        for i in 0..self.map.enemies.len() {
+            let go = &mut self.map.enemies[i];
 
-            go.update(&self.player);
+            go.update(&self.map.player);
 
             let mut done: bool = false;
 
             for j in 0..self.player_bullets.len() {
-                let fish = &self.player_bullets[j];
+                match &self.player_bullets[j] {
+                    PlayerWeapon::Turbofish(fish) => {
+                        if go
+                            .position()
+                            .is_touching(fish.position().pos_start.x, fish.position().pos_start.y)
+                        {
+                            let mut explode_sound = self
+                                .asset_manager
+                                .get_sound("Some(explode).mp3")
+                                .lock()
+                                .unwrap();
 
-                if go
-                    .position()
-                    .is_touching(fish.position().pos_start.x, fish.position().pos_start.y)
-                {
-                    let mut explode_sound = self
-                        .asset_manager
-                        .get_sound("Some(explode).mp3")
-                        .lock()
-                        .unwrap();
+                            self.particles.push((
+                                ParticleSystemBuilder::new(ctx)
+                                    .count(100)
+                                    .emission_rate(100.0)
+                                    .start_max_age(5.0)
+                                    .start_size_range(2.0, 15.0)
+                                    .start_color_range(
+                                        graphics::Color::from((0, 0, 0)),
+                                        graphics::Color::from((255, 255, 255)),
+                                    )
+                                    .delta_color(Transition::range(
+                                        ggez::graphics::Color::from((255, 0, 0)),
+                                        ggez::graphics::Color::from((255, 255, 0)),
+                                    ))
+                                    .emission_shape(EmissionShape::Circle(
+                                        mint::Point2 { x: 0.0, y: 0.0 },
+                                        100.0,
+                                    ))
+                                    .build(),
+                                go.position().pos_start.x,
+                                -HEIGHT2 + 70.,
+                                0,
+                            ));
 
-                    self.particles.push((
-                        ParticleSystemBuilder::new(ctx)
-                            .count(100)
-                            .emission_rate(100.0)
-                            .start_max_age(5.0)
-                            .start_size_range(2.0, 15.0)
-                            .start_color_range(
-                                graphics::Color::from((0, 0, 0)),
-                                graphics::Color::from((255, 255, 255)),
-                            )
-                            .delta_color(Transition::range(
-                                ggez::graphics::Color::from((255, 0, 0)),
-                                ggez::graphics::Color::from((255, 255, 0)),
-                            ))
-                            .emission_shape(EmissionShape::Circle(
-                                mint::Point2 { x: 0.0, y: 0.0 },
-                                100.0,
-                            ))
-                            .build(),
-                        go.position().pos_start.x,
-                        -HEIGHT2 + 70.,
-                        0,
-                    ));
+                            explode_sound.play().expect("Cannot play Some(explode).mp3");
 
-                    explode_sound.play().expect("Cannot play Some(explode).mp3");
+                            self.map.enemies.remove(i);
+                            self.player_bullets.remove(j);
 
-                    self.enemies.remove(i);
-                    self.player_bullets.remove(j);
+                            done = true;
 
-                    done = true;
-
-                    break;
+                            break;
+                        }
+                    }
+                    PlayerWeapon::Grappling(_grapple) => {
+                        // TODO
+                    }
                 }
             }
 
@@ -578,47 +589,54 @@ impl Game {
             cloud.update(ctx, &self.asset_manager);
         }
 
-        for i in 0..self.barrels.len() {
-            let barrel_position = self.barrels[i].position();
+        for i in 0..self.map.barrels.len() {
+            let barrel_position = self.map.barrels[i].position();
 
             let mut done: bool = false;
 
-            for fish in &self.player_bullets {
-                if barrel_position
-                    .is_touching(fish.position().pos_start.x, fish.position().pos_start.y)
-                {
-                    let mut explode_sound = self
-                        .asset_manager
-                        .get_sound("Some(explode).mp3")
-                        .lock()
-                        .unwrap();
+            for bullet in &self.player_bullets {
+                match bullet {
+                    PlayerWeapon::Turbofish(fish) => {
+                        if barrel_position
+                            .is_touching(fish.position().pos_start.x, fish.position().pos_start.y)
+                        {
+                            let mut explode_sound = self
+                                .asset_manager
+                                .get_sound("Some(explode).mp3")
+                                .lock()
+                                .unwrap();
 
-                    self.particles.push((
-                        ParticleSystemBuilder::new(ctx)
-                            .count(500)
-                            .emission_rate(200.0)
-                            .start_max_age(5.0)
-                            .start_size_range(2.0, 15.0)
-                            .delta_size(Transition::range(1., 2.))
-                            .delta_color(Transition::range(
-                                ggez::graphics::Color::from((255, 0, 0)),
-                                ggez::graphics::Color::from((255, 255, 0)),
-                            ))
-                            .emission_shape(EmissionShape::Circle(
-                                mint::Point2 { x: 0.0, y: 0.0 },
-                                200.0,
-                            ))
-                            .build(),
-                        barrel_position.pos_start.x,
-                        -HEIGHT2 + 70.,
-                        0,
-                    ));
+                            self.particles.push((
+                                ParticleSystemBuilder::new(ctx)
+                                    .count(500)
+                                    .emission_rate(200.0)
+                                    .start_max_age(5.0)
+                                    .start_size_range(2.0, 15.0)
+                                    .delta_size(Transition::range(1., 2.))
+                                    .delta_color(Transition::range(
+                                        ggez::graphics::Color::from((255, 0, 0)),
+                                        ggez::graphics::Color::from((255, 255, 0)),
+                                    ))
+                                    .emission_shape(EmissionShape::Circle(
+                                        mint::Point2 { x: 0.0, y: 0.0 },
+                                        200.0,
+                                    ))
+                                    .build(),
+                                barrel_position.pos_start.x,
+                                -HEIGHT2 + 70.,
+                                0,
+                            ));
 
-                    explode_sound.play().expect("Cannot play Some(explode).mp3");
+                            explode_sound.play().expect("Cannot play Some(explode).mp3");
 
-                    self.barrels.remove(i);
+                            self.map.barrels.remove(i);
 
-                    done = true;
+                            done = true;
+                        }
+                    }
+                    PlayerWeapon::Grappling(_grapple) => {
+                        // TODO
+                    }
                 }
             }
 
@@ -634,12 +652,23 @@ impl Game {
         }
 
         for i in 0..self.player_bullets.len() {
-            let fish = &mut self.player_bullets[i];
+            let bullet = &mut self.player_bullets[i];
 
-            if fish.go_boom() {
-                self.player_bullets.remove(i);
+            match bullet {
+                PlayerWeapon::Turbofish(fish) => {
+                    if fish.go_boom() {
+                        self.player_bullets.remove(i);
 
-                break;
+                        break;
+                    }
+                }
+                PlayerWeapon::Grappling(grapple) => {
+                    if grapple.go_boom() {
+                        self.player_bullets.remove(i);
+
+                        break;
+                    }
+                }
             }
         }
 
@@ -670,11 +699,16 @@ impl Game {
         for v in &mut self.ui_lerp {
             match v.0.as_str() {
                 "ammo" => {
-                    self.player.ammo = lerp(self.player.ammo, *v.1, 0.3);
+                    self.map.player.ammo = lerp(self.map.player.ammo, *v.1, 0.3);
                 }
 
                 "health" => {
                     // TODO: Health lerping
+                }
+
+                "using" => {
+                    self.map.using.as_mut().unwrap().1 =
+                        lerp(self.map.using.as_mut().unwrap().1, 0.0, 0.05);
                 }
 
                 _ => panic!(),
@@ -687,17 +721,17 @@ impl Game {
     pub fn key_press(&mut self, keycode: KeyCode) -> Option<crate::Screen> {
         match keycode {
             KeyCode::Left => {
-                self.player.move_x(self.player.pos_x - 10.);
+                self.map.player.move_x(self.map.player.pos_x - 10.);
 
-                self.player.set_direction(Direction::Left);
+                self.map.player.set_direction(Direction::Left);
             }
             KeyCode::Right => {
-                self.player.move_x(self.player.pos_x + 10.);
+                self.map.player.move_x(self.map.player.pos_x + 10.);
 
-                self.player.set_direction(Direction::Right);
+                self.map.player.set_direction(Direction::Right);
             }
             KeyCode::Space => {
-                self.player.go_boom();
+                self.map.player.go_boom();
             }
             KeyCode::S => {
                 let ui_lerp = self.ui_lerp.clone();
@@ -707,15 +741,21 @@ impl Game {
                     .lock()
                     .unwrap();
 
-                if let Some(fish) = self.player.shoot(&self.asset_manager) {
+                if let Some(bullet) = self.map.player.shoot(
+                    &self.asset_manager,
+                    self.map.using.as_ref().unwrap().0.as_str(),
+                    &self.map.enemies,
+                ) {
                     turbofish_shoot
                         .play()
                         .expect("Cannot play Some(turbofish_shoot).mp3");
 
-                    let cur_ammo = ui_lerp.get("ammo").unwrap();
-                    self.ui_lerp.insert(String::from("ammo"), *cur_ammo - 1.);
+                    if let PlayerWeapon::Turbofish(_fish) = &bullet {
+                        let cur_ammo = ui_lerp.get("ammo").unwrap();
+                        self.ui_lerp.insert(String::from("ammo"), *cur_ammo - 1.);
+                    }
 
-                    self.player_bullets.push(fish);
+                    self.player_bullets.push(bullet);
                 }
             }
             KeyCode::Up => {
@@ -727,6 +767,19 @@ impl Game {
             KeyCode::Key8 => {
                 exit(0);
             }
+            KeyCode::Down => match self.map.using.as_ref().unwrap().0.as_str() {
+                "Turbofish Gun" => {
+                    self.map.using = Some((String::from("Grappling Gun"), 1.0));
+                }
+
+                "Grappling Gun" => {
+                    self.map.using = Some((String::from("Turbofish Gun"), 1.0));
+                }
+
+                _ => {
+                    panic!()
+                }
+            },
             _ => (),
         }
 
@@ -743,7 +796,7 @@ impl Game {
             _ => (),
         }
 
-        self.player.set_direction(Direction::None);
+        self.map.player.set_direction(Direction::None);
     }
 
     pub fn camera_shakeke(&mut self) {
