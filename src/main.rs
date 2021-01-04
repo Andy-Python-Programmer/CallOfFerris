@@ -2,6 +2,8 @@
 //!
 //! Call of Ferris is a thrilling action game where your favorite Ferris the crab and the rust mascot got guns and has taken up the duty to find evildoer languages while managing to keep itself alive.
 //! Take part in this awesome adventure and help Ferris be the best ever!
+//! 
+//! For a fuller outline, see the project [README.md](https://github.com/Andy-Python-Programmer/CallOfFerris)
 
 use std::{fs, rc::Rc, sync::Mutex};
 

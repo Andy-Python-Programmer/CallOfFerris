@@ -8,3 +8,4 @@ os:
 cache: cargo
 script:
   - cargo build --release --verbose
+  - cargo test --release --verbose
