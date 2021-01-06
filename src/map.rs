@@ -53,29 +53,34 @@ impl Map {
                         '[' => {
                             let tile = Tile::new(draw_pos, physics, asset_manager, TileType::LEFT);
 
-                            draw_inc = tile.dimensions().x;
-                            ground.push(tile);
-
+                            draw_inc = (tile.dimensions().x / 2.0) + 32.0;
                             draw_pos += draw_inc;
+
+                            ground.push(tile);
                         }
 
                         '-' => {
                             let tile =
                                 Tile::new(draw_pos, physics, asset_manager, TileType::CENTER);
 
-                            draw_inc = tile.dimensions().x;
-                            ground.push(tile);
-
+                            draw_inc = (tile.dimensions().x / 2.0) + 32.0;
                             draw_pos += draw_inc;
+
+                            ground.push(tile);
                         }
 
                         ']' => {
-                            let tile = Tile::new(draw_pos, physics, asset_manager, TileType::RIGHT);
+                            let tile = Tile::new(
+                                (draw_pos - 32.0) + 20.0,
+                                physics,
+                                asset_manager,
+                                TileType::RIGHT,
+                            );
 
-                            draw_inc = tile.dimensions().x;
-                            ground.push(tile);
-
+                            draw_inc = (tile.dimensions().x / 2.0) + 32.0;
                             draw_pos += draw_inc;
+
+                            ground.push(tile);
                         }
 
                         '_' => {
@@ -87,7 +92,7 @@ impl Map {
                             let tile =
                                 Tile::new(draw_pos, physics, asset_manager, TileType::CENTER);
 
-                            draw_inc = tile.dimensions().x;
+                            draw_inc = (tile.dimensions().x / 2.0) + 32.0;
 
                             ground.push(tile);
                             enemies.push(Enemy::new(draw_pos, physics, asset_manager));
@@ -100,12 +105,12 @@ impl Map {
                             let tile =
                                 Tile::new(draw_pos, physics, asset_manager, TileType::CENTER);
 
-                            draw_inc = tile.dimensions().x;
-
-                            ground.push(tile);
                             player = Some(Player::new(draw_pos, physics, asset_manager));
 
+                            draw_inc = tile.dimensions().x;
                             draw_pos += draw_inc;
+
+                            ground.push(tile);
                         }
 
                         '*' => {

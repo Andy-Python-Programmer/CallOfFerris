@@ -649,6 +649,8 @@ impl Game {
                             self.map.barrels.remove(i);
 
                             done = true;
+
+                            break;
                         }
                     }
                     PlayerWeapon::Grappling(_grapple) => {
