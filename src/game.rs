@@ -20,6 +20,7 @@ use rand::Rng;
 use crate::{
     components::{bullet::PlayerWeapon, cloud::Cloud, player::Direction},
     map::Map,
+    physics::Physics,
     utils::{lerp, remap, AssetManager},
     Screen, HEIGHT, WIDTH,
 };
@@ -32,10 +33,10 @@ gfx_defines! {
     }
 }
 
-const HEIGHT2: f32 = HEIGHT / 2.;
-
 pub struct Game {
     map: Map,
+    physics: Physics,
+
     clouds: Vec<Cloud>,
 
     player_bullets: Vec<PlayerWeapon>,
@@ -68,7 +69,8 @@ impl Game {
         let mut buffer = String::new();
         map.read_to_string(&mut buffer).unwrap();
 
-        let mut map = Map::parse(buffer, &asset_manager);
+        let mut physics = Physics::new();
+        let mut map = Map::parse(buffer, &mut physics, &asset_manager);
 
         let mut clouds = vec![];
 
@@ -90,10 +92,12 @@ impl Game {
         ui_lerp.insert(String::from("health"), map.player.health as f32);
         ui_lerp.insert(String::from("using"), map.using.as_ref().unwrap().1);
 
-        map.player.pos_y += 40.;
-        map.player.going_boom = true;
+        map.player.init(&mut physics);
 
-        camera.move_to(Vec2::new(map.player.pos_x, map.player.pos_y));
+        camera.move_to(Vec2::new(
+            map.player.position(&mut physics).x,
+            map.player.position(&mut physics).y,
+        ));
 
         for _ in 0..rng.gen_range(5, 7) {
             clouds.push(Cloud::new(
@@ -107,6 +111,7 @@ impl Game {
 
         Mutex::new(Self {
             map,
+            physics,
 
             clouds,
 
@@ -286,29 +291,29 @@ impl Game {
 
         // Ground
         for tile in &mut self.map.ground {
-            tile.draw(ctx, &self.camera, &self.asset_manager)?;
+            tile.draw(ctx, &self.camera, &mut self.physics, &self.asset_manager)?;
         }
 
         // Enemies
         for enemy in &mut self.map.enemies {
-            enemy.draw(ctx, &self.camera, &self.asset_manager)?;
+            enemy.draw(ctx, &self.camera, &mut self.physics, &self.asset_manager)?;
         }
 
         // Barrel
         for boom in &mut self.map.barrels {
-            boom.draw(ctx, &self.camera, &self.asset_manager)?;
+            boom.draw(ctx, &self.camera, &mut self.physics, &self.asset_manager)?;
         }
 
         // Player
         self.map
             .player
-            .draw(ctx, &self.camera, &self.asset_manager)?;
+            .draw(ctx, &self.camera, &mut self.physics, &self.asset_manager)?;
 
         // Player Bullets
         for fish_ in &mut self.player_bullets {
             match fish_ {
                 PlayerWeapon::Turbofish(fish) => {
-                    fish.draw(ctx, &self.camera, &self.asset_manager)?;
+                    fish.draw(ctx, &self.camera, &mut self.physics, &self.asset_manager)?;
                 }
                 PlayerWeapon::Grappling(grapple) => {
                     grapple.draw(ctx, &self.camera, &self.asset_manager)?;
@@ -324,6 +329,9 @@ impl Game {
 
         // User Profile, etc..
         self.draw_ui(ctx)?;
+
+        #[cfg(feature = "debug")]
+        self.physics.draw_colliders(ctx, &self.camera)?;
 
         Ok(())
     }
@@ -462,6 +470,12 @@ impl Game {
     }
 
     pub fn inner_update(&mut self, ctx: &mut Context) -> GameResult<Option<crate::Screen>> {
+        // Take a time step in our physics world!
+        self.physics.step();
+
+        // Update our player
+        self.map.player.update(ctx, &mut self.physics);
+
         if self.map.enemies.len() == 0 {
             self.draw_end_text.3 = true;
             self.can_die = false;
@@ -483,32 +497,34 @@ impl Game {
             }
         }
 
-        let ferris_pos_x = self.map.player.pos_x;
-        let ferris_pos_y = self.map.player.pos_y;
+        // let ferris_pos_x = self.map.player.position(&mut self.physics).x;
+        // let ferris_pos_y = self.map.player.position(&mut self.physics).y;
 
-        let ferris = self.asset_manager.get_image("Some(ferris).png");
+        // let ferris = self.asset_manager.get_image("Some(ferris).png");
 
-        let mut ferris_is_falling_down = true;
+        // let mut ferris_is_falling_down = true;
 
-        for tile in &mut self.map.ground {
-            // AABB
-            if ferris_pos_x + ferris.width() as f32 >= tile.position().pos_start.x
-                && tile.position().pos_end.x >= ferris_pos_x
-                && ferris_pos_y + ferris.height() as f32 >= tile.position().pos_start.y
-                && tile.position().pos_end.y <= ferris_pos_y
-            {
-                ferris_is_falling_down = false;
+        // for tile in &mut self.map.ground {
+        //     // AABB
+        //     if ferris_pos_x + ferris.width() as f32 >= tile.position().pos_start.x
+        //         && tile.position().pos_end.x >= ferris_pos_x
+        //         && ferris_pos_y + ferris.height() as f32 >= tile.position().pos_start.y
+        //         && tile.position().pos_end.y <= ferris_pos_y
+        //     {
+        //         ferris_is_falling_down = false;
 
-                break;
-            }
-        }
+        //         break;
+        //     }
+        // }
 
-        self.map.player.update(ferris_is_falling_down);
+        // self.map.player.update(ferris_is_falling_down);
 
-        self.camera
-            .move_to(Vec2::new(self.map.player.pos_x, self.map.player.pos_y));
+        self.camera.move_to(Vec2::new(
+            self.map.player.position(&mut self.physics).x,
+            self.map.player.position(&mut self.physics).y,
+        ));
 
-        if self.map.player.pos_y < -800. {
+        if self.map.player.position(&mut self.physics).y < -800. {
             if self.can_die {
                 return Ok(Some(Screen::Dead));
             }
@@ -522,12 +538,9 @@ impl Game {
             let mut done: bool = false;
 
             for j in 0..self.player_bullets.len() {
-                match &self.player_bullets[j] {
+                match &mut self.player_bullets[j] {
                     PlayerWeapon::Turbofish(fish) => {
-                        if go
-                            .position()
-                            .is_touching(fish.position().pos_start.x, fish.position().pos_start.y)
-                        {
+                        if fish.is_touching(&mut self.physics, go.handle()) {
                             let mut explode_sound = self
                                 .asset_manager
                                 .get_sound("Some(explode).mp3")
@@ -553,14 +566,19 @@ impl Game {
                                         100.0,
                                     ))
                                     .build(),
-                                go.position().pos_start.x,
-                                -HEIGHT2 + 70.,
+                                go.position(&mut self.physics).x,
+                                go.position(&mut self.physics).y,
                                 0,
                             ));
 
                             explode_sound.play().expect("Cannot play Some(explode).mp3");
 
+                            // Remove the enemy from the world
+                            go.destroy(&mut self.physics);
                             self.map.enemies.remove(i);
+
+                            // Remove the bullet from the world
+                            fish.destroy(&mut self.physics);
                             self.player_bullets.remove(j);
 
                             done = true;
@@ -590,16 +608,14 @@ impl Game {
         }
 
         for i in 0..self.map.barrels.len() {
-            let barrel_position = self.map.barrels[i].position();
-
             let mut done: bool = false;
 
-            for bullet in &self.player_bullets {
+            for bullet in &mut self.player_bullets {
                 match bullet {
                     PlayerWeapon::Turbofish(fish) => {
-                        if barrel_position
-                            .is_touching(fish.position().pos_start.x, fish.position().pos_start.y)
-                        {
+                        let barrel = &self.map.barrels[i];
+
+                        if fish.is_touching(&mut self.physics, barrel.handle()) {
                             let mut explode_sound = self
                                 .asset_manager
                                 .get_sound("Some(explode).mp3")
@@ -622,13 +638,14 @@ impl Game {
                                         200.0,
                                     ))
                                     .build(),
-                                barrel_position.pos_start.x,
-                                -HEIGHT2 + 70.,
+                                barrel.position(&mut self.physics).x,
+                                barrel.position(&mut self.physics).y,
                                 0,
                             ));
 
                             explode_sound.play().expect("Cannot play Some(explode).mp3");
 
+                            barrel.destroy(&mut self.physics);
                             self.map.barrels.remove(i);
 
                             done = true;
@@ -656,7 +673,9 @@ impl Game {
 
             match bullet {
                 PlayerWeapon::Turbofish(fish) => {
-                    if fish.go_boom() {
+                    if fish.update(&mut self.physics) {
+                        fish.destroy(&mut self.physics);
+
                         self.player_bullets.remove(i);
 
                         break;
@@ -720,19 +739,6 @@ impl Game {
 
     pub fn key_press(&mut self, keycode: KeyCode) -> Option<crate::Screen> {
         match keycode {
-            KeyCode::Left => {
-                self.map.player.move_x(self.map.player.pos_x - 10.);
-
-                self.map.player.set_direction(Direction::Left);
-            }
-            KeyCode::Right => {
-                self.map.player.move_x(self.map.player.pos_x + 10.);
-
-                self.map.player.set_direction(Direction::Right);
-            }
-            KeyCode::Space => {
-                self.map.player.go_boom();
-            }
             KeyCode::S => {
                 let ui_lerp = self.ui_lerp.clone();
                 let mut turbofish_shoot = self
@@ -742,6 +748,7 @@ impl Game {
                     .unwrap();
 
                 if let Some(bullet) = self.map.player.shoot(
+                    &mut self.physics,
                     &self.asset_manager,
                     self.map.using.as_ref().unwrap().0.as_str(),
                     &self.map.enemies,

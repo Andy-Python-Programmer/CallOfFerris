@@ -1,11 +1,12 @@
-use ggez::{Context, GameResult};
-use ggez_goodies::{
-    camera::{Camera, CameraDraw},
-    nalgebra_glm::Vec2,
-};
+use ggez::{event::KeyCode, graphics, input::keyboard, nalgebra::Point2, Context, GameResult};
+use ggez_goodies::{camera::Camera, nalgebra_glm::Vec2};
+use graphics::DrawParam;
+use nphysics2d::object::DefaultBodyHandle;
+use nphysics2d::{algebra::Velocity2, nalgebra as na};
 
 use crate::{
-    utils::{lerp, AssetManager},
+    physics::{isometry_to_point, point_to_isometry, Physics},
+    utils::AssetManager,
     HEIGHT,
 };
 
@@ -23,31 +24,31 @@ pub enum Direction {
 }
 
 pub struct Player {
-    pub pos_x: f32,
-    pub pos_y: f32,
-
     pub ammo: f32,
     pub health: i32,
 
-    gravity: f32,
-    velocity: f32,
-    pub going_boom: bool,
-    lerp_to: Option<f32>,
     direction: Direction,
+
+    body: DefaultBodyHandle,
 }
 
 impl Player {
-    pub fn new(pos_x: f32) -> Self {
+    pub fn new(pos_x: f32, physics: &mut Physics, asset_manager: &AssetManager) -> Self {
+        let ferris = asset_manager.get_image("Some(ferris).png");
+
+        let body = physics.create_player(
+            na::Point2::new(pos_x, HEIGHT2 - 155.),
+            ferris.width(),
+            ferris.height(),
+        );
+
         Self {
-            pos_x,
-            ammo: 10.,
-            pos_y: 0.,
-            gravity: 0.1,
-            velocity: 0.,
-            going_boom: false,
-            lerp_to: None,
-            direction: Direction::None,
+            ammo: 10.0,
             health: 100,
+
+            direction: Direction::None,
+
+            body,
         }
     }
 
@@ -59,93 +60,91 @@ impl Player {
         &mut self,
         ctx: &mut Context,
         camera: &Camera,
+        physics: &mut Physics,
         asset_manager: &AssetManager,
     ) -> GameResult<()> {
         let ferris = asset_manager.get_image("Some(ferris).png");
         let turbofish_sniper = asset_manager.get_image("Some(sniper).png");
 
-        ferris.draw_camera(
-            &camera,
+        let player_position = self.position(physics);
+        let ferris_position =
+            camera.calculate_dest_point(Vec2::new(player_position.x, player_position.y));
+
+        graphics::draw(
             ctx,
-            Vec2::new(self.pos_x, (-HEIGHT2 + 155.) + self.pos_y),
-            0.0,
+            &ferris,
+            DrawParam::default()
+                .dest(Point2::new(ferris_position.x, ferris_position.y))
+                .offset(Point2::new(0.5, 0.5)),
         )?;
 
-        turbofish_sniper.draw_camera(
-            &camera,
+        graphics::draw(
             ctx,
-            Vec2::new(self.pos_x + 30., (-HEIGHT2 + 120.) + self.pos_y),
-            0.0,
+            &turbofish_sniper,
+            DrawParam::default()
+                .dest(Point2::new(
+                    ferris_position.x + 30.0,
+                    ferris_position.y + 15.0,
+                ))
+                .offset(Point2::new(0.5, 0.5)),
         )?;
 
         Ok(())
     }
 
-    pub fn go_boom(&mut self) {
-        self.velocity -= 2.5;
-        self.going_boom = true;
+    pub fn init(&mut self, physics: &mut Physics) {
+        let player_body = physics.get_rigid_body_mut(self.body);
+        let player_position = isometry_to_point(player_body.position());
 
-        match self.direction {
-            Direction::Left => {
-                self.lerp_to = Some(self.pos_x - 300.);
-            }
-            Direction::Right => {
-                self.lerp_to = Some(self.pos_x + 300.);
-            }
-            Direction::None => {
-                self.lerp_to = None;
-            }
-        }
+        let updated_position =
+            point_to_isometry(na::Point2::new(player_position.x, player_position.y - 40.0));
+
+        player_body.set_position(updated_position);
     }
 
-    pub fn update(&mut self, gonna_boom: bool) {
-        if let Some(l) = self.lerp_to {
-            if self.pos_x as i32 == l as i32 {
-                self.lerp_to = None;
-            } else {
-                self.pos_x = lerp(self.pos_x, l, 0.5);
-            }
+    pub fn update(&mut self, ctx: &mut Context, physics: &mut Physics) {
+        if keyboard::is_key_pressed(ctx, KeyCode::Left) {
+            self.move_x(physics, Direction::Left);
+            self.set_direction(Direction::Left);
+        } else if keyboard::is_key_pressed(ctx, KeyCode::Right) {
+            self.move_x(physics, Direction::Right);
+            self.set_direction(Direction::Right);
         }
 
-        if self.going_boom {
-            self.pos_y -= self.velocity;
-
-            if self.pos_y < 0. && !gonna_boom {
-                self.going_boom = false;
-
-                self.pos_y = 0.;
-                self.velocity = 0.;
-            }
+        // We are not adding Space key pressed in an else if statement as we want to jump while we are also moving to a specific direction in the x axis.
+        if keyboard::is_key_pressed(ctx, KeyCode::Space) {
+            self.go_boom(physics);
+            self.set_direction(Direction::None);
         }
 
-        if self.pos_y > 0. || gonna_boom {
-            self.velocity += self.gravity;
-            self.pos_y -= self.velocity;
-        }
-
-        if self.pos_y == 0.0 && self.velocity != 0.0 {
-            self.velocity = 0.0;
+        // Same as the previous if statement. We want to shoot while moving and jumping around :)
+        if keyboard::is_key_pressed(ctx, KeyCode::S) {
+            // TODO: Move the shoot logic from game struct to this if statement
         }
     }
 
     pub fn shoot(
         &mut self,
+        physics: &mut Physics,
         asset_manager: &AssetManager,
         gun: &str,
         enemies: &Vec<Enemy>,
     ) -> Option<PlayerWeapon> {
-        if self.ammo as i32 != 0 {
+        let player_position = self.position(physics);
+
+        if !(self.ammo <= 0.0) {
             match gun {
                 "Turbofish Gun" => Some(PlayerWeapon::Turbofish(Turbofish::new(
-                    self.pos_x + 220.,
-                    (-HEIGHT2 + 106.) + self.pos_y,
+                    player_position.x + 140.0,
+                    player_position.y,
+                    physics,
                     asset_manager,
                 ))),
 
                 "Grappling Gun" => {
                     let gun = Grappling::new(
-                        self.pos_x + 150.,
-                        (-HEIGHT2 + 106.) + self.pos_y,
+                        player_position.x + 220.0,
+                        player_position.y - 49.0,
                         asset_manager,
                         enemies,
                     );
@@ -166,7 +165,49 @@ impl Player {
         }
     }
 
-    pub fn move_x(&mut self, x: f32) {
-        self.lerp_to = Some(lerp(self.pos_x, x, 2.5));
+    pub fn position(&mut self, physics: &mut Physics) -> na::Point2<f32> {
+        let player_body = physics.get_rigid_body_mut(self.body);
+        let player_position = isometry_to_point(player_body.position());
+
+        player_position
+    }
+
+    pub fn go_boom(&mut self, physics: &mut Physics) {
+        let player_body = physics.get_rigid_body_mut(self.body);
+        let player_velocity = player_body.velocity();
+
+        let new_velocity = Velocity2::new(
+            na::Vector2::new(player_velocity.linear.x, player_velocity.linear.y - 20.0),
+            player_velocity.angular,
+        );
+
+        player_body.set_velocity(new_velocity);
+    }
+
+    fn move_x(&mut self, physics: &mut Physics, direction: Direction) {
+        let player_body = physics.get_rigid_body_mut(self.body);
+        let player_velocity = player_body.velocity();
+
+        match direction {
+            Direction::Left => {
+                let new_velocity = Velocity2::new(
+                    na::Vector2::new(player_velocity.linear.x - 10.0, player_velocity.linear.y),
+                    player_velocity.angular,
+                );
+
+                player_body.set_velocity(new_velocity);
+            }
+            Direction::Right => {
+                let new_velocity = Velocity2::new(
+                    na::Vector2::new(player_velocity.linear.x + 10.0, player_velocity.linear.y),
+                    player_velocity.angular,
+                );
+
+                player_body.set_velocity(new_velocity);
+            }
+            Direction::None => {
+                panic!("Direction::None direction was passed in the Player::move_x() function where None value of the Direction enum was not expected. Panic!!");
+            }
+        }
     }
 }

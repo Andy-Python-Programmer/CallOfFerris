@@ -38,18 +38,6 @@ impl Position {
         }
     }
 
-    pub fn is_touching(&self, x: f32, y: f32) -> bool {
-        if x >= self.pos_start.x
-            && x <= self.pos_end.x
-            && y <= self.pos_start.y
-            && y >= self.pos_end.y
-        {
-            true
-        } else {
-            false
-        }
-    }
-
     pub fn move_by(&mut self, axis: &str, by: f32) {
         match axis {
             "x+" => {
@@ -182,12 +170,5 @@ mod test {
             pos.pos_start == Point2::new(10.0, 10.0),
             pos.pos_end == Point2::new(20.0, 20.0)
         );
-    }
-
-    #[test]
-    fn colliding() {
-        let pos = Position::new(896.0, -110.0, 100, 128);
-
-        assert!(pos.is_touching(902.0, -194.0))
     }
 }

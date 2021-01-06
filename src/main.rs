@@ -2,8 +2,8 @@
 //!
 //! Call of Ferris is a thrilling action game where your favorite Ferris the crab and the rust mascot got guns and has taken up the duty to find evildoer languages while managing to keep itself alive.
 //! Take part in this awesome adventure and help Ferris be the best ever!
-//! 
-//! For a fuller outline, see the project [README.md](https://github.com/Andy-Python-Programmer/CallOfFerris)
+//!
+//! For a fuller outline, see the project's [README.md](https://github.com/Andy-Python-Programmer/CallOfFerris)
 
 use std::{fs, rc::Rc, sync::Mutex};
 
@@ -18,6 +18,7 @@ mod dead;
 mod game;
 mod map;
 mod menu;
+mod physics;
 mod utils;
 
 mod components {
@@ -101,6 +102,8 @@ impl Game {
     pub fn new(ctx: &mut Context, asset_manager: AssetManager) -> Self {
         let asset_manager = Rc::new(asset_manager);
 
+        // Woah. We are cloning the asset manager. Yes thats why its wrapped in Rc<>
+        // and anything wrapped in a Rc<> and performs a clone only clones its pointer so its fine to use clone here!
         Self {
             screen: Screen::Menu,
 
@@ -114,20 +117,22 @@ impl Game {
 }
 
 impl EventHandler for Game {
-    fn update(&mut self, ctx: &mut Context) -> GameResult {
-        match self.screen {
-            Screen::Menu => self.menu_screen.update(ctx),
-            Screen::Play => {
-                let change = self.game_screen.lock().unwrap().update(ctx)?;
+    fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
+        while ggez::timer::check_update_time(ctx, 60) {
+            match self.screen {
+                Screen::Menu => self.menu_screen.update(ctx)?,
+                Screen::Play => {
+                    let change = self.game_screen.lock().unwrap().update(ctx)?;
 
-                if let Some(s) = change {
-                    self.screen = s;
+                    if let Some(s) = change {
+                        self.screen = s;
+                    }
                 }
-
-                Ok(())
+                Screen::Dead => self.death_screen.update(ctx)?,
             }
-            Screen::Dead => self.death_screen.update(ctx),
         }
+
+        Ok(())
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {

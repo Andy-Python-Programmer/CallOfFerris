@@ -1,13 +1,17 @@
 use ggez::{
-    nalgebra::{distance, Point2},
+    graphics::{self, DrawParam},
+    nalgebra::Point2,
     Context, GameResult,
 };
-use ggez_goodies::{
-    camera::{Camera, CameraDraw},
-    nalgebra_glm::Vec2,
-};
+use ggez_goodies::{camera::Camera, nalgebra_glm::Vec2};
 
-use crate::utils::{AssetManager, Position};
+use nphysics2d::{algebra::Velocity2, nalgebra as na, object::DefaultBodyHandle};
+use physics::ObjectData;
+
+use crate::{
+    physics::{self, isometry_to_point, Physics},
+    utils::{AssetManager, Position},
+};
 
 use super::enemy::Enemy;
 
@@ -17,57 +21,82 @@ pub enum PlayerWeapon {
 }
 
 pub struct Turbofish {
-    position: Position,
-    traveled_count: i32,
+    body: DefaultBodyHandle,
 }
 
 impl Turbofish {
-    pub fn new(pos_x: f32, pos_y: f32, asset_manager: &AssetManager) -> Self {
+    pub fn new(
+        pos_x: f32,
+        pos_y: f32,
+        physics: &mut Physics,
+        asset_manager: &AssetManager,
+    ) -> Self {
         let turbofish_bullet = asset_manager.get_image("Some(turbofish).png");
-        let position = Position::new(
-            pos_x,
-            pos_y,
+        let body = physics.create_bullet(
+            na::Point2::new(pos_x, pos_y),
             turbofish_bullet.width(),
             turbofish_bullet.height(),
         );
 
-        Self {
-            position,
-            traveled_count: 0,
-        }
+        let bullet_body = physics.get_rigid_body_mut(body);
+        bullet_body.set_velocity(Velocity2::linear(1000.0, 0.0));
+
+        Self { body }
     }
 
     pub fn draw(
         &mut self,
         ctx: &mut Context,
         camera: &Camera,
+        physics: &mut Physics,
         asset_manager: &AssetManager,
     ) -> GameResult<()> {
         let turbofish_bullet = asset_manager.get_image("Some(turbofish).png");
 
-        turbofish_bullet.draw_camera(
-            camera,
+        let bullet_position = self.position(physics);
+        let turbofish_position =
+            camera.calculate_dest_point(Vec2::new(bullet_position.x, bullet_position.y));
+
+        graphics::draw(
             ctx,
-            Vec2::new(self.position.pos_start.x, self.position.pos_start.y),
-            1.5708,
+            &turbofish_bullet,
+            DrawParam::default()
+                .dest(Point2::new(turbofish_position.x, turbofish_position.y))
+                .offset(Point2::new(0.5, 0.5)),
         )?;
 
         Ok(())
     }
 
-    pub fn go_boom(&mut self) -> bool {
-        if self.traveled_count < 100 {
-            self.traveled_count += 1;
-            self.position.move_by("x+", 10.0);
-
-            false
-        } else {
-            true
+    pub fn update(&mut self, physics: &mut Physics) -> bool {
+        for collision in physics.collisions(self.body) {
+            if collision.0 .1 == ObjectData::Ground {
+                return true;
+            }
         }
+
+        false
     }
 
-    pub fn position(&self) -> Position {
-        self.position
+    pub fn is_touching(&mut self, physics: &mut Physics, handle: DefaultBodyHandle) -> bool {
+        for collision in physics.collisions(self.body) {
+            if collision.1 == handle {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    pub fn destroy(&mut self, physics: &mut Physics) {
+        physics.destroy_body(self.body);
+    }
+
+    pub fn position(&self, physics: &mut Physics) -> na::Point2<f32> {
+        let bullet_body = physics.get_rigid_body_mut(self.body);
+        let bullet_position = isometry_to_point(bullet_body.position());
+
+        bullet_position
     }
 }
 
@@ -78,37 +107,40 @@ pub struct Grappling {
 
 impl Grappling {
     pub fn new(
-        pos_x: f32,
-        pos_y: f32,
+        _pos_x: f32,
+        _pos_y: f32,
         _asset_manager: &AssetManager,
-        enemies: &Vec<Enemy>,
+        _enemies: &Vec<Enemy>,
     ) -> Option<Self> {
-        let mut position = None;
+        // FIXME
+        // let mut position = None;
 
-        for enemy in enemies {
-            if pos_x - enemy.position().pos_start.x < 100.0
-                && pos_x - enemy.position().pos_start.x > -300.0
-            {
-                position = Some(Position::new(
-                    pos_x,
-                    pos_y,
-                    distance(
-                        &Point2::new(pos_x, 0.0),
-                        &Point2::new(enemy.position().pos_start.x, 0.0),
-                    ) as u16,
-                    10,
-                ));
-            }
-        }
+        // for enemy in enemies {
+        //     if pos_x - enemy.position().pos_start.x < 100.0
+        //         && pos_x - enemy.position().pos_start.x > -300.0
+        //     {
+        //         position = Some(Position::new(
+        //             pos_x,
+        //             pos_y,
+        //             distance(
+        //                 &Point2::new(pos_x, 0.0),
+        //                 &Point2::new(enemy.position().pos_start.x, 0.0),
+        //             ) as u16,
+        //             10,
+        //         ));
+        //     }
+        // }
 
-        if position.is_none() {
-            return None;
-        }
+        // if position.is_none() {
+        //     return None;
+        // }
 
-        Some(Self {
-            position: position.unwrap(),
-            traveled_count: 0,
-        })
+        // Some(Self {
+        //     position: position.unwrap(),
+        //     traveled_count: 0,
+        // })
+
+        None
     }
 
     pub fn draw(
@@ -117,7 +149,7 @@ impl Grappling {
         _camera: &Camera,
         _asset_manager: &AssetManager,
     ) -> GameResult<()> {
-        // TODO
+        // FIXME
 
         Ok(())
     }

@@ -9,9 +9,14 @@ Take part in this awesome adventure and help Ferris be the best ever!
 repository = "https://github.com/Andy-Python-Programmer/CallOfFerris"
 edition = "2018"
 
+[features]
+default = []
+debug = []
+
 [dependencies]
 ggez = "0.5"
 rand = "0.7"
-ggez-goodies = { git = "https://github.com/ggez/ggez-goodies" }
+ggez-goodies = { path = "./ggez-goodies/" }
 nalgebra-glm = "0.9.0"
 gfx = "0.18.2"
+nphysics2d = "0.18.0"

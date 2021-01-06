@@ -5,6 +5,7 @@ use crate::{
         player::Player,
         tile::{Tile, TileType},
     },
+    physics::Physics,
     utils::AssetManager,
 };
 
@@ -21,7 +22,7 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn parse(map: String, asset_manager: &AssetManager) -> Self {
+    pub fn parse(map: String, physics: &mut Physics, asset_manager: &AssetManager) -> Self {
         let mut draw_pos = 0.;
 
         #[allow(unused_assignments)]
@@ -50,27 +51,28 @@ impl Map {
                 for id in line.chars() {
                     match id {
                         '[' => {
-                            let tile = Tile::new(draw_pos, asset_manager, TileType::LEFT);
+                            let tile = Tile::new(draw_pos, physics, asset_manager, TileType::LEFT);
 
-                            draw_inc = tile.width();
+                            draw_inc = tile.dimensions().x;
                             ground.push(tile);
 
                             draw_pos += draw_inc;
                         }
 
                         '-' => {
-                            let tile = Tile::new(draw_pos, asset_manager, TileType::CENTER);
+                            let tile =
+                                Tile::new(draw_pos, physics, asset_manager, TileType::CENTER);
 
-                            draw_inc = tile.width();
+                            draw_inc = tile.dimensions().x;
                             ground.push(tile);
 
                             draw_pos += draw_inc;
                         }
 
                         ']' => {
-                            let tile = Tile::new(draw_pos, asset_manager, TileType::RIGHT);
+                            let tile = Tile::new(draw_pos, physics, asset_manager, TileType::RIGHT);
 
-                            draw_inc = tile.width();
+                            draw_inc = tile.dimensions().x;
                             ground.push(tile);
 
                             draw_pos += draw_inc;
@@ -82,35 +84,38 @@ impl Map {
                         }
 
                         '8' => {
-                            let tile = Tile::new(draw_pos, asset_manager, TileType::CENTER);
+                            let tile =
+                                Tile::new(draw_pos, physics, asset_manager, TileType::CENTER);
 
-                            draw_inc = tile.width();
+                            draw_inc = tile.dimensions().x;
 
                             ground.push(tile);
-                            enemies.push(Enemy::new(draw_pos, asset_manager));
+                            enemies.push(Enemy::new(draw_pos, physics, asset_manager));
 
                             draw_pos += draw_inc;
                             total_enemies += 1;
                         }
 
                         '4' => {
-                            let tile = Tile::new(draw_pos, asset_manager, TileType::CENTER);
+                            let tile =
+                                Tile::new(draw_pos, physics, asset_manager, TileType::CENTER);
 
-                            draw_inc = tile.width();
+                            draw_inc = tile.dimensions().x;
 
                             ground.push(tile);
-                            player = Some(Player::new(draw_pos));
+                            player = Some(Player::new(draw_pos, physics, asset_manager));
 
                             draw_pos += draw_inc;
                         }
 
                         '*' => {
-                            let tile = Tile::new(draw_pos, asset_manager, TileType::CENTER);
+                            let tile =
+                                Tile::new(draw_pos, physics, asset_manager, TileType::CENTER);
 
-                            draw_inc = tile.width();
+                            draw_inc = tile.dimensions().x;
 
                             ground.push(tile);
-                            barrels.push(Barrel::new(draw_pos, asset_manager));
+                            barrels.push(Barrel::new(draw_pos, physics, asset_manager));
 
                             draw_pos += draw_inc;
                         }
