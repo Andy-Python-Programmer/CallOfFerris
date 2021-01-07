@@ -70,13 +70,11 @@ impl Enemy {
         Ok(())
     }
 
-    pub fn update(&mut self, _player: &Player) {
-        // // Can the enemy see the player?
-        // if player.pos_x - self.position.pos_start.x > -457.0
-        //     && player.pos_x - self.position.pos_start.x < 457.0
-        // {
-        //     // TODO: The enemy shoots the player as soon as it see's the player.
-        // }
+    pub fn update(&mut self, physics: &mut Physics, player: &Player) {
+        // Can the enemy see the player?
+        if physics.distance(self.handle(), player.handle()) < 300.0 {
+            // TODO: The enemy shoots the player as soon as it see's the player.
+        }
     }
 
     pub fn position(&self, physics: &mut Physics) -> na::Point2<f32> {

@@ -12,10 +12,7 @@ use crate::{
 
 const HEIGHT2: f32 = HEIGHT / 2.;
 
-use super::{
-    bullet::{Grappling, PlayerWeapon, Turbofish},
-    enemy::Enemy,
-};
+use super::bullet::{Grappling, PlayerWeapon, Turbofish};
 
 pub enum Direction {
     Left,
@@ -128,7 +125,6 @@ impl Player {
         physics: &mut Physics,
         asset_manager: &AssetManager,
         gun: &str,
-        enemies: &Vec<Enemy>,
     ) -> Option<PlayerWeapon> {
         let player_position = self.position(physics);
 
@@ -143,10 +139,10 @@ impl Player {
 
                 "Grappling Gun" => {
                     let gun = Grappling::new(
-                        player_position.x + 220.0,
-                        player_position.y - 49.0,
-                        asset_manager,
-                        enemies,
+                        player_position.x + 140.0,
+                        player_position.y,
+                        physics,
+                        self.handle(),
                     );
 
                     if let Some(grapple) = gun {
@@ -209,5 +205,9 @@ impl Player {
                 panic!("Direction::None direction was passed in the Player::move_x() function where None value of the Direction enum was not expected. Panic!!");
             }
         }
+    }
+
+    pub fn handle(&self) -> DefaultBodyHandle {
+        self.body
     }
 }

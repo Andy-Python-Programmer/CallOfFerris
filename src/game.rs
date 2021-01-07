@@ -4,6 +4,7 @@ use ggez::{
     audio::SoundSource,
     event::KeyCode,
     graphics::{self, Color, DrawParam, Drawable, Shader, Text},
+    input::keyboard,
     mint,
     nalgebra::Point2,
     timer, Context, GameResult,
@@ -316,7 +317,7 @@ impl Game {
                     fish.draw(ctx, &self.camera, &mut self.physics, &self.asset_manager)?;
                 }
                 PlayerWeapon::Grappling(grapple) => {
-                    grapple.draw(ctx, &self.camera, &self.asset_manager)?;
+                    grapple.draw(ctx, &self.camera, &mut self.physics)?;
                 }
             }
         }
@@ -497,34 +498,12 @@ impl Game {
             }
         }
 
-        // let ferris_pos_x = self.map.player.position(&mut self.physics).x;
-        // let ferris_pos_y = self.map.player.position(&mut self.physics).y;
-
-        // let ferris = self.asset_manager.get_image("Some(ferris).png");
-
-        // let mut ferris_is_falling_down = true;
-
-        // for tile in &mut self.map.ground {
-        //     // AABB
-        //     if ferris_pos_x + ferris.width() as f32 >= tile.position().pos_start.x
-        //         && tile.position().pos_end.x >= ferris_pos_x
-        //         && ferris_pos_y + ferris.height() as f32 >= tile.position().pos_start.y
-        //         && tile.position().pos_end.y <= ferris_pos_y
-        //     {
-        //         ferris_is_falling_down = false;
-
-        //         break;
-        //     }
-        // }
-
-        // self.map.player.update(ferris_is_falling_down);
-
         self.camera.move_to(Vec2::new(
             self.map.player.position(&mut self.physics).x,
             self.map.player.position(&mut self.physics).y,
         ));
 
-        if self.map.player.position(&mut self.physics).y < -800. {
+        if self.map.player.position(&mut self.physics).y > 800. {
             if self.can_die {
                 return Ok(Some(Screen::Dead));
             }
@@ -533,7 +512,7 @@ impl Game {
         for i in 0..self.map.enemies.len() {
             let go = &mut self.map.enemies[i];
 
-            go.update(&self.map.player);
+            go.update(&mut self.physics, &self.map.player);
 
             let mut done: bool = false;
 
@@ -684,9 +663,10 @@ impl Game {
                     }
                 }
                 PlayerWeapon::Grappling(grapple) => {
-                    if grapple.go_boom() {
+                    if keyboard::is_key_pressed(ctx, KeyCode::S) {
+                        grapple.update(&mut self.physics);
+                    } else {
                         self.player_bullets.remove(i);
-
                         break;
                     }
                 }
@@ -753,7 +733,6 @@ impl Game {
                     &mut self.physics,
                     &self.asset_manager,
                     self.map.using.as_ref().unwrap().0.as_str(),
-                    &self.map.enemies,
                 ) {
                     turbofish_shoot
                         .play()

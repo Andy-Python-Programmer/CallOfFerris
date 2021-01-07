@@ -10,11 +10,13 @@ use ggez::{
 #[cfg(feature = "debug")]
 use ggez_goodies::{camera::Camera, nalgebra_glm::Vec2};
 
+use ncollide2d::{pipeline::CollisionGroups, query::RayIntersection};
 use nphysics2d::{
     material,
     nalgebra::{Isometry2, Vector2},
     ncollide2d::{
-        query::ContactManifold,
+        self,
+        query::{ContactManifold, Ray},
         shape::{Cuboid, ShapeHandle},
     },
     object::{
@@ -24,6 +26,7 @@ use nphysics2d::{
 };
 
 use nphysics2d::nalgebra as na;
+use object::Collider;
 
 type N = f32;
 
@@ -311,32 +314,59 @@ impl Physics {
             .into_iter()
             .flatten()
             .map(|(handle1, _, handle2, _, _, manifold)| {
-                (self.get_user_data(handle1, handle2), handle2, manifold)
+                (
+                    (self.get_user_data(handle1), self.get_user_data(handle2)),
+                    handle2,
+                    manifold,
+                )
             })
             .collect()
     }
 
     /// Gets the user data of the 2 handles provided in the collisions function.
-    fn get_user_data(
-        &self,
-        obj1: DefaultBodyHandle,
-        obj2: DefaultBodyHandle,
-    ) -> (ObjectData, ObjectData) {
-        let col1 = self.collider_set.get(obj1).unwrap();
-        let col2 = self.collider_set.get(obj2).unwrap();
+    pub fn get_user_data(&self, object: DefaultBodyHandle) -> ObjectData {
+        let collider = self.collider_set.get(object).unwrap();
 
-        let data1 = *col1
-            .user_data()
-            .unwrap()
-            .downcast_ref::<ObjectData>()
-            .expect("Invalid types");
-        let data2 = *col2
+        let data = *collider
             .user_data()
             .unwrap()
             .downcast_ref::<ObjectData>()
             .expect("Invalid types");
 
-        (data1, data2)
+        data
+    }
+
+    /// Get the distance between a object
+    pub fn distance(&mut self, object1: DefaultBodyHandle, object2: DefaultBodyHandle) -> f32 {
+        let pos_1 = self.collider_set.get(object1).unwrap();
+        let pos_2 = self.collider_set.get(object2).unwrap();
+
+        ncollide2d::query::distance(
+            &pos_1.position(),
+            pos_1.shape(),
+            &pos_2.position(),
+            pos_2.shape(),
+        )
+    }
+
+    /// Perform a raycast
+    pub fn ray_cast(
+        &mut self,
+        origin: na::Point2<f32>,
+        dir: na::Vector2<f32>,
+    ) -> Vec<(
+        ObjectData,
+        &Collider<f32, DefaultBodyHandle>,
+        RayIntersection<f32>,
+    )> {
+        let ray = Ray::new(origin, dir);
+
+        self.geometrical_world
+            .interferences_with_ray(&self.collider_set, &ray, 0.0, &CollisionGroups::default())
+            .map(|(handle, collider, intersection)| {
+                (self.get_user_data(handle), collider, intersection)
+            })
+            .collect()
     }
 
     pub fn destroy_body(&mut self, handle: DefaultBodyHandle) {

@@ -5,15 +5,13 @@ use ggez::{
 };
 use ggez_goodies::{camera::Camera, nalgebra_glm::Vec2};
 
-use nphysics2d::{algebra::Velocity2, nalgebra as na, object::DefaultBodyHandle};
+use nphysics2d::{algebra::Velocity2, math::Velocity, nalgebra as na, object::DefaultBodyHandle};
 use physics::ObjectData;
 
 use crate::{
     physics::{self, isometry_to_point, Physics},
-    utils::{AssetManager, Position},
+    utils::AssetManager,
 };
-
-use super::enemy::Enemy;
 
 pub enum PlayerWeapon {
     Turbofish(Turbofish),
@@ -101,71 +99,83 @@ impl Turbofish {
 }
 
 pub struct Grappling {
-    position: Position,
-    traveled_count: i32,
+    grapple_to: DefaultBodyHandle,
+    player_body: DefaultBodyHandle,
 }
 
 impl Grappling {
     pub fn new(
-        _pos_x: f32,
-        _pos_y: f32,
-        _asset_manager: &AssetManager,
-        _enemies: &Vec<Enemy>,
+        pos_x: f32,
+        pos_y: f32,
+        physics: &mut Physics,
+        handle: DefaultBodyHandle,
     ) -> Option<Self> {
-        // FIXME
-        // let mut position = None;
+        let ray_cast = physics.ray_cast(na::Point2::new(pos_x, pos_y), na::Vector2::new(1.0, 1.0));
 
-        // for enemy in enemies {
-        //     if pos_x - enemy.position().pos_start.x < 100.0
-        //         && pos_x - enemy.position().pos_start.x > -300.0
-        //     {
-        //         position = Some(Position::new(
-        //             pos_x,
-        //             pos_y,
-        //             distance(
-        //                 &Point2::new(pos_x, 0.0),
-        //                 &Point2::new(enemy.position().pos_start.x, 0.0),
-        //             ) as u16,
-        //             10,
-        //         ));
-        //     }
-        // }
+        if ray_cast.len() > 0 {
+            for object in ray_cast {
+                if object.0 == ObjectData::Barrel {
+                    let body = object.1.body();
+                    let body_pos = isometry_to_point(physics.get_rigid_body(body).position());
 
-        // if position.is_none() {
-        //     return None;
-        // }
+                    physics
+                        .get_rigid_body_mut(body)
+                        .set_velocity(Velocity::linear(pos_x - body_pos.x, pos_y - body_pos.y));
 
-        // Some(Self {
-        //     position: position.unwrap(),
-        //     traveled_count: 0,
-        // })
+                    return Some(Self {
+                        grapple_to: body,
+                        player_body: handle,
+                    });
+                }
+            }
 
-        None
+            None
+        } else {
+            None
+        }
     }
 
     pub fn draw(
         &mut self,
-        _ctx: &mut Context,
-        _camera: &Camera,
-        _asset_manager: &AssetManager,
+        ctx: &mut Context,
+        camera: &Camera,
+        physics: &mut Physics,
     ) -> GameResult<()> {
         // FIXME
+
+        let player = isometry_to_point(physics.get_rigid_body(self.player_body).position());
+
+        let rect = graphics::Mesh::new_rectangle(
+            ctx,
+            graphics::DrawMode::fill(),
+            graphics::Rect::new(
+                0.0,
+                0.0,
+                physics.distance(self.player_body, self.grapple_to),
+                10.0,
+            ),
+            [1.0, 1.0, 1.0, 1.0].into(),
+        )?;
+
+        let pos = camera.calculate_dest_point(Vec2::new(player.x + 140.0, player.y));
+
+        graphics::draw(
+            ctx,
+            &rect,
+            DrawParam::default().dest(Point2::new(pos.x, pos.y)),
+        )?;
 
         Ok(())
     }
 
-    pub fn go_boom(&mut self) -> bool {
-        if self.traveled_count < 100 {
-            self.traveled_count += 1;
-            self.position.move_by("x+", 10.0);
+    pub fn update(&mut self, physics: &mut Physics) {
+        let player = isometry_to_point(physics.get_rigid_body(self.player_body).position());
+        let object = isometry_to_point(physics.get_rigid_body(self.grapple_to).position());
 
-            false
-        } else {
-            true
+        if physics.distance(self.player_body, self.grapple_to) as i32 > 1 {
+            physics
+                .get_rigid_body_mut(self.grapple_to)
+                .set_velocity(Velocity::linear(player.x - object.x, player.y - object.y));
         }
-    }
-
-    pub fn _position(&self) -> Position {
-        self.position
     }
 }
