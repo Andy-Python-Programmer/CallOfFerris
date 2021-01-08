@@ -14,21 +14,34 @@ use ggez::{
 };
 use utils::AssetManager;
 
-mod dead;
-mod game;
-mod map;
-mod menu;
-mod physics;
 mod utils;
 
-mod components {
-    pub mod barrel;
-    pub mod bullet;
-    pub mod cloud;
-    pub mod enemy;
-    pub mod player;
-    pub mod tile;
+mod screens {
+    pub mod menu {
+        pub mod menu;
+    }
+
+    pub mod game {
+        pub mod components {
+            pub mod barrel;
+            pub mod bullet;
+            pub mod cloud;
+            pub mod enemy;
+            pub mod player;
+            pub mod tile;
+        }
+
+        pub mod game;
+        pub mod map;
+        pub mod physics;
+    }
+
+    pub mod dead {
+        pub mod dead;
+    }
 }
+
+pub use screens::*;
 
 const WIDTH: f32 = 1000.0;
 const HEIGHT: f32 = 600.0;
@@ -91,9 +104,9 @@ pub enum Screen {
 
 pub struct Game {
     screen: Screen,
-    menu_screen: menu::Menu,
-    game_screen: Mutex<game::Game>,
-    death_screen: dead::Death,
+    menu_screen: menu::menu::Menu,
+    game_screen: Mutex<game::game::Game>,
+    death_screen: dead::dead::Death,
 
     asset_manager: Rc<AssetManager>,
 }
@@ -107,9 +120,9 @@ impl Game {
         Self {
             screen: Screen::Menu,
 
-            menu_screen: menu::Menu::create(ctx, asset_manager.clone()),
-            game_screen: game::Game::create(ctx, asset_manager.clone()),
-            death_screen: dead::Death::spawn(ctx),
+            menu_screen: menu::menu::Menu::create(ctx, asset_manager.clone()),
+            game_screen: game::game::Game::create(ctx, asset_manager.clone()),
+            death_screen: dead::dead::Death::spawn(ctx, asset_manager.clone()),
 
             asset_manager,
         }
@@ -179,7 +192,8 @@ impl EventHandler for Game {
                 if let Some(s) = change {
                     match s {
                         Screen::Menu => {
-                            self.game_screen = game::Game::create(ctx, self.asset_manager.clone());
+                            self.game_screen =
+                                game::game::Game::create(ctx, self.asset_manager.clone());
                         }
 
                         _ => (),

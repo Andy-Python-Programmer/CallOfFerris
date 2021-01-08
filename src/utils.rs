@@ -63,24 +63,8 @@ impl Position {
             _ => panic!(),
         }
     }
-
-    #[allow(dead_code)]
-    pub fn move_to(&mut self, axis: &str, to: f32) {
-        match axis {
-            "x" => {
-                self.pos_start.x = to;
-                self.pos_end.x = to + self.width as f32;
-            }
-
-            "y" => {
-                self.pos_start.y = to;
-                self.pos_end.y = to - self.height as f32;
-            }
-
-            _ => panic!(),
-        }
-    }
 }
+
 enum Asset {
     Image(Image),
     Font(Font),

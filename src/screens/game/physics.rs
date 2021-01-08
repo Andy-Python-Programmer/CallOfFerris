@@ -52,7 +52,7 @@ pub struct Physics {
 
 impl Physics {
     /// The amount of gravity for the Y axis in the physics world.
-    const GRAVITY: N = 50.8;
+    const GRAVITY: N = 300.0;
 
     /// Create a new physics struct object.
     pub fn new() -> Self {

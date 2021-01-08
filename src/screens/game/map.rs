@@ -1,11 +1,12 @@
 use crate::{
-    components::{
+    game::components::{
         barrel::Barrel,
+        bullet::WeaponType,
         enemy::Enemy,
         player::Player,
         tile::{Tile, TileType},
     },
-    physics::Physics,
+    game::physics::Physics,
     utils::AssetManager,
 };
 
@@ -19,6 +20,8 @@ pub struct Map {
 
     pub end: Option<String>,
     pub using: Option<(String, f32)>,
+
+    pub weapon: WeaponType,
 }
 
 impl Map {
@@ -38,13 +41,23 @@ impl Map {
         let mut end = None;
         let mut using = None;
 
+        let mut weapon = WeaponType::Turbofish;
+
         for line in map.split("\n").collect::<Vec<_>>() {
             let exp = line.split(" ").collect::<Vec<_>>();
 
             if exp[0].starts_with(".end") {
                 end = Some(exp[1..].join(" "));
-            } else if exp[0].starts_with(".using") {
-                using = Some((exp[1..].join(" ").trim().to_string(), 1.0));
+            } else if exp[0].starts_with(".using_weapon") {
+                let using_weapon = (exp[1..].join(" ").trim().to_string(), 1.0);
+
+                weapon = match using_weapon.0.as_str() {
+                    "Turbofish Gun" => WeaponType::Turbofish,
+                    "Grappling Gun" => WeaponType::Grappling,
+                    _ => panic!(""),
+                };
+
+                using = Some(using_weapon);
             } else if exp[0].starts_with(".comment") {
                 // Do nothing. ¯\_(ツ)_/¯
             } else {
@@ -143,6 +156,8 @@ impl Map {
 
             end,
             using,
+
+            weapon,
         }
     }
 }

@@ -5,14 +5,14 @@ use nphysics2d::object::DefaultBodyHandle;
 use nphysics2d::{algebra::Velocity2, nalgebra as na};
 
 use crate::{
-    physics::{isometry_to_point, point_to_isometry, Physics},
+    game::physics::{isometry_to_point, point_to_isometry, Physics},
     utils::AssetManager,
     HEIGHT,
 };
 
 const HEIGHT2: f32 = HEIGHT / 2.;
 
-use super::bullet::{Grappling, PlayerWeapon, Turbofish};
+use super::bullet::{Grappling, PlayerWeapon, Turbofish, WeaponType};
 
 pub enum Direction {
     Left,
@@ -124,20 +124,20 @@ impl Player {
         &mut self,
         physics: &mut Physics,
         asset_manager: &AssetManager,
-        gun: &str,
+        gun: &WeaponType,
     ) -> Option<PlayerWeapon> {
         let player_position = self.position(physics);
 
-        if !(self.ammo <= 0.0) {
+        if self.ammo > 0.0 {
             match gun {
-                "Turbofish Gun" => Some(PlayerWeapon::Turbofish(Turbofish::new(
+                WeaponType::Turbofish => Some(PlayerWeapon::Turbofish(Turbofish::new(
                     player_position.x + 140.0,
                     player_position.y,
                     physics,
                     asset_manager,
                 ))),
 
-                "Grappling Gun" => {
+                WeaponType::Grappling => {
                     let gun = Grappling::new(
                         player_position.x + 140.0,
                         player_position.y,
@@ -150,10 +150,6 @@ impl Player {
                     } else {
                         None
                     }
-                }
-
-                _ => {
-                    panic!()
                 }
             }
         } else {

@@ -8,7 +8,7 @@ use ggez_goodies::{camera::Camera, nalgebra_glm::Vec2};
 use nphysics2d::{nalgebra as na, object::DefaultBodyHandle};
 
 use crate::{
-    physics::{isometry_to_point, Physics},
+    game::physics::{isometry_to_point, Physics},
     utils::AssetManager,
     HEIGHT,
 };

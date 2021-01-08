@@ -3,7 +3,7 @@ use ggez_goodies::{camera::Camera, nalgebra_glm::Vec2};
 use graphics::DrawParam;
 
 use crate::{
-    physics::{isometry_to_point, Physics},
+    game::physics::{isometry_to_point, Physics},
     utils::AssetManager,
     HEIGHT,
 };

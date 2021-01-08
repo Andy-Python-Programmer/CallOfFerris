@@ -19,9 +19,13 @@ use mint::Vector2;
 use rand::Rng;
 
 use crate::{
-    components::{bullet::PlayerWeapon, cloud::Cloud, player::Direction},
-    map::Map,
-    physics::Physics,
+    game::components::{
+        bullet::{PlayerWeapon, WeaponType},
+        cloud::Cloud,
+        player::Direction,
+    },
+    game::map::Map,
+    game::physics::Physics,
     utils::{lerp, remap, AssetManager},
     Screen, HEIGHT, WIDTH,
 };
@@ -453,7 +457,7 @@ impl Game {
 
     pub fn update(&mut self, ctx: &mut Context) -> GameResult<Option<crate::Screen>> {
         if let Some(t) = self.tics {
-            if let Some(_t) = self.tics {
+            if let Some(_) = self.tics {
                 if self.dim_constant.rate != 0.5 {
                     self.dim_constant.rate = lerp(self.dim_constant.rate, 0.5, 0.1);
                     self.dim_shader.send(ctx, self.dim_constant)?;
@@ -565,9 +569,7 @@ impl Game {
                             break;
                         }
                     }
-                    PlayerWeapon::Grappling(_grapple) => {
-                        // TODO
-                    }
+                    PlayerWeapon::Grappling(_grapple) => {}
                 }
             }
 
@@ -632,9 +634,7 @@ impl Game {
                             break;
                         }
                     }
-                    PlayerWeapon::Grappling(_grapple) => {
-                        // TODO
-                    }
+                    PlayerWeapon::Grappling(_grapple) => {}
                 }
             }
 
@@ -700,7 +700,11 @@ impl Game {
         for v in &mut self.ui_lerp {
             match v.0.as_str() {
                 "ammo" => {
-                    self.map.player.ammo = lerp(self.map.player.ammo, *v.1, 0.3);
+                    if self.map.player.ammo <= 0.0 {
+                        self.map.player.ammo = 0.0;
+                    } else {
+                        self.map.player.ammo = lerp(self.map.player.ammo, *v.1, 0.3);
+                    }
                 }
 
                 "health" => {
@@ -729,11 +733,11 @@ impl Game {
                     .lock()
                     .unwrap();
 
-                if let Some(bullet) = self.map.player.shoot(
-                    &mut self.physics,
-                    &self.asset_manager,
-                    self.map.using.as_ref().unwrap().0.as_str(),
-                ) {
+                if let Some(bullet) =
+                    self.map
+                        .player
+                        .shoot(&mut self.physics, &self.asset_manager, &self.map.weapon)
+                {
                     turbofish_shoot
                         .play()
                         .expect("Cannot play Some(turbofish_shoot).mp3");
@@ -758,10 +762,12 @@ impl Game {
             KeyCode::Down => match self.map.using.as_ref().unwrap().0.as_str() {
                 "Turbofish Gun" => {
                     self.map.using = Some((String::from("Grappling Gun"), 1.0));
+                    self.map.weapon = WeaponType::Grappling;
                 }
 
                 "Grappling Gun" => {
                     self.map.using = Some((String::from("Turbofish Gun"), 1.0));
+                    self.map.weapon = WeaponType::Turbofish;
                 }
 
                 _ => {
@@ -787,6 +793,7 @@ impl Game {
         self.map.player.set_direction(Direction::None);
     }
 
+    /// Give the camera a shakey shakey
     pub fn camera_shakeke(&mut self) {
         let mut rng = rand::thread_rng();
 

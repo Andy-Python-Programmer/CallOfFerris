@@ -5,7 +5,7 @@ use nphysics2d::nalgebra as na;
 use nphysics2d::object::DefaultBodyHandle;
 
 use crate::{
-    physics::{isometry_to_point, Physics},
+    game::physics::{isometry_to_point, Physics},
     utils::AssetManager,
     HEIGHT,
 };

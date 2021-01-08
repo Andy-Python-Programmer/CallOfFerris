@@ -6,16 +6,20 @@ use ggez::{
 use ggez_goodies::{camera::Camera, nalgebra_glm::Vec2};
 
 use nphysics2d::{algebra::Velocity2, math::Velocity, nalgebra as na, object::DefaultBodyHandle};
-use physics::ObjectData;
 
 use crate::{
-    physics::{self, isometry_to_point, Physics},
+    game::physics::{isometry_to_point, ObjectData, Physics},
     utils::AssetManager,
 };
 
 pub enum PlayerWeapon {
     Turbofish(Turbofish),
     Grappling(Grappling),
+}
+
+pub enum WeaponType {
+    Turbofish,
+    Grappling,
 }
 
 pub struct Turbofish {
@@ -141,8 +145,6 @@ impl Grappling {
         camera: &Camera,
         physics: &mut Physics,
     ) -> GameResult<()> {
-        // FIXME
-
         let player = isometry_to_point(physics.get_rigid_body(self.player_body).position());
 
         let rect = graphics::Mesh::new_rectangle(
