@@ -1,5 +1,6 @@
 //! This file contains a helper physics struct and a bunch of helper conversion methods.
 
+use ggez::graphics::Color;
 #[cfg(feature = "debug")]
 use ggez::{
     graphics::{self, DrawParam, Rect},
@@ -38,6 +39,16 @@ pub enum ObjectData {
     Enemy,
     Bullet,
     Barrel,
+    Particle(Color),
+}
+
+impl ObjectData {
+    pub fn get_particle_data(&self) -> Color {
+        match *self {
+            ObjectData::Particle(particle) => particle,
+            _ => panic!(),
+        }
+    }
 }
 
 /// Helper physics struct that makes live's easier while using nphysics2d physics engine with ggez.
@@ -51,6 +62,8 @@ pub struct Physics {
 }
 
 impl Physics {
+    // TODO: Move the seperate rigid body creator functions to use the create_rigid_body() and create_collider() functions indead.
+
     /// The amount of gravity for the Y axis in the physics world.
     const GRAVITY: N = 300.0;
 
@@ -256,6 +269,18 @@ impl Physics {
         bullet_handle
     }
 
+    /// Create a new rigid body
+    pub fn create_rigid_body(&mut self, body: RigidBody<f32>) -> DefaultBodyHandle {
+        let handle = self.body_set.insert(body);
+
+        handle
+    }
+
+    /// Create a new collider
+    pub fn create_collider(&mut self, collider: Collider<f32, DefaultBodyHandle>) {
+        self.collider_set.insert(collider);
+    }
+
     /// Returns a immutable body from the handle provided by the above helper functions.
     pub fn get_rigid_body(&mut self, handle: DefaultBodyHandle) -> &RigidBody<f32> {
         let body = self.body_set.rigid_body(handle).expect("Body not found!");
@@ -284,7 +309,7 @@ impl Physics {
                 ctx,
                 graphics::DrawMode::Stroke(graphics::StrokeOptions::DEFAULT),
                 Rect::new(0.0, 0.0, shape.extents().x, shape.extents().y),
-                [1.0, 1.0, 1.0, 1.0].into(),
+                graphics::WHITE,
             )?;
 
             let pos = camera.calculate_dest_point(Vec2::new(shape.mins.x, shape.mins.y));
@@ -362,7 +387,12 @@ impl Physics {
         let ray = Ray::new(origin, dir);
 
         self.geometrical_world
-            .interferences_with_ray(&self.collider_set, &ray, 0.0, &CollisionGroups::default())
+            .interferences_with_ray(
+                &self.collider_set,
+                &ray,
+                f32::MAX,
+                &CollisionGroups::default(),
+            )
             .map(|(handle, collider, intersection)| {
                 (self.get_user_data(handle), collider, intersection)
             })

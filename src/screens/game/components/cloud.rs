@@ -5,28 +5,20 @@ use ggez::{
 };
 use graphics::DrawParam;
 
-use crate::{
-    utils::{AssetManager, Position},
-    WIDTH,
-};
+use crate::{utils::AssetManager, WIDTH};
+
+use nphysics2d::nalgebra as na;
 
 pub struct Cloud {
-    position: Position,
+    position: na::Point2<f32>,
 
     scale: f32,
     speed: f32,
 }
 
 impl Cloud {
-    pub fn new(
-        pos_x: f32,
-        pos_y: f32,
-        scale: f32,
-        speed: f32,
-        asset_manager: &AssetManager,
-    ) -> Self {
-        let cloud = asset_manager.get_image("Some(cloud).png");
-        let position = Position::new(pos_x, pos_y, cloud.width(), cloud.height());
+    pub fn new(pos_x: f32, pos_y: f32, scale: f32, speed: f32) -> Self {
+        let position = na::Point2::new(pos_x, pos_y);
 
         Self {
             position,
@@ -47,27 +39,21 @@ impl Cloud {
                     y: self.scale,
                 })
                 .dest(Point2 {
-                    x: self.position.pos_start.x,
-                    y: self.position.pos_start.y,
+                    x: self.position.x,
+                    y: self.position.y,
                 }),
         )?;
 
         Ok(())
     }
 
-    pub fn update(&mut self, ctx: &mut Context, asset_manager: &AssetManager) {
-        let cloud = asset_manager.get_image("Some(cloud).png");
+    pub fn update(&mut self, ctx: &mut Context) {
         let delta_time = ggez::timer::delta(ctx).as_secs_f32();
 
-        self.position.move_by("x+", delta_time * self.speed);
+        self.position.x += delta_time * self.speed;
 
-        if self.position.pos_start.x > WIDTH + 100. {
-            self.position = Position::new(
-                -100.,
-                self.position.pos_start.y,
-                cloud.width(),
-                cloud.height(),
-            );
+        if self.position.x > WIDTH + 100. {
+            self.position = na::Point2::new(-100., self.position.y);
         }
     }
 }

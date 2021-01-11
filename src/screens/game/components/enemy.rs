@@ -1,4 +1,5 @@
 use ggez::{
+    audio::SoundSource,
     graphics::{self, DrawParam},
     nalgebra::Point2,
     Context, GameResult,
@@ -9,13 +10,14 @@ use nphysics2d::{nalgebra as na, object::DefaultBodyHandle};
 
 use crate::{
     game::physics::{isometry_to_point, Physics},
-    utils::AssetManager,
+    play,
+    utils::{AssetManager, ParticleSystem},
     HEIGHT,
 };
 
 const HEIGHT2: f32 = HEIGHT / 2.;
 
-use super::player::Player;
+use super::{bullet::PlayerWeapon, player::Player};
 
 pub struct Enemy {
     body: DefaultBodyHandle,
@@ -70,11 +72,57 @@ impl Enemy {
         Ok(())
     }
 
-    pub fn update(&mut self, physics: &mut Physics, player: &Player) {
+    pub fn update(
+        &mut self,
+        physics: &mut Physics,
+        asset_manager: &AssetManager,
+        particles: &mut Vec<ParticleSystem>,
+        player: &mut Player,
+    ) -> bool {
+        let position = self.position(physics);
+
+        let gopher = asset_manager.get_image("gopher.png");
+        let explode_sound = asset_manager.get_sound("Some(explode).mp3");
+
+        for i in 0..player.weapons.len() {
+            match &mut player.weapons[i] {
+                PlayerWeapon::Turbofish(fish) => {
+                    if fish.is_touching(physics, self.handle()) {
+                        particles.push(ParticleSystem::new(
+                            physics,
+                            50,
+                            na::Point2::new(
+                                position.x - (gopher.width() / 2) as f32,
+                                position.y - (gopher.height() / 2) as f32,
+                            ),
+                            na::Point2::new(
+                                position.x + (gopher.width() / 2) as f32,
+                                position.y + (gopher.height() / 2) as f32,
+                            ),
+                        ));
+
+                        play!(explode_sound);
+
+                        // Remove the enemy from the world
+                        self.destroy(physics);
+
+                        // Remove the weapon from the world
+                        fish.destroy(physics);
+                        player.weapons.remove(i);
+
+                        return true;
+                    }
+                }
+                PlayerWeapon::Grappling(_) => {}
+            }
+        }
+
         // Can the enemy see the player?
         if physics.distance(self.handle(), player.handle()) < 300.0 {
             // TODO: The enemy shoots the player as soon as it see's the player.
         }
+
+        return false;
     }
 
     pub fn position(&self, physics: &mut Physics) -> na::Point2<f32> {

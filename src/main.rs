@@ -43,8 +43,8 @@ mod screens {
 
 pub use screens::*;
 
-const WIDTH: f32 = 1000.0;
-const HEIGHT: f32 = 600.0;
+const WIDTH: f32 = 2000.0;
+const HEIGHT: f32 = 1000.0;
 
 fn load_assets(ctx: &mut Context) -> AssetManager {
     let mut asset_manager = AssetManager::new();
@@ -52,6 +52,7 @@ fn load_assets(ctx: &mut Context) -> AssetManager {
     let images_dir = fs::read_dir("./resources/images/").unwrap();
     let fonts_dir = fs::read_dir("./resources/fonts/").unwrap();
     let audio_dir = fs::read_dir("./resources/audio/").unwrap();
+    let maps_dir = fs::read_dir("./resources/maps/").unwrap();
 
     for image in images_dir {
         asset_manager.load_image(ctx, image.unwrap().file_name().to_str().unwrap());
@@ -63,6 +64,10 @@ fn load_assets(ctx: &mut Context) -> AssetManager {
 
     for audio in audio_dir {
         asset_manager.load_sound(ctx, audio.unwrap().file_name().to_str().unwrap());
+    }
+
+    for map in maps_dir {
+        asset_manager.load_file(ctx, "maps", map.unwrap().file_name().to_str().unwrap());
     }
 
     asset_manager

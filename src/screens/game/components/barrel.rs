@@ -1,16 +1,19 @@
-use ggez::{graphics, nalgebra::Point2, Context, GameResult};
+use ggez::{audio::SoundSource, graphics, nalgebra::Point2, Context, GameResult};
 use ggez_goodies::{camera::Camera, nalgebra_glm::Vec2};
 use graphics::DrawParam;
 
 use crate::{
     game::physics::{isometry_to_point, Physics},
-    utils::AssetManager,
+    play,
+    utils::{AssetManager, ParticleSystem},
     HEIGHT,
 };
 
 const HEIGHT2: f32 = HEIGHT / 2.;
 
 use nphysics2d::{nalgebra as na, object::DefaultBodyHandle};
+
+use super::{bullet::PlayerWeapon, player::Player};
 
 pub struct Barrel {
     body: DefaultBodyHandle,
@@ -51,6 +54,56 @@ impl Barrel {
         )?;
 
         Ok(())
+    }
+
+    pub fn update(
+        &mut self,
+        physics: &mut Physics,
+        asset_manager: &AssetManager,
+        particles: &mut Vec<ParticleSystem>,
+        player: &mut Player,
+    ) -> bool {
+        let barrel = asset_manager.get_image("Some(barrel).png");
+
+        let position = self.position(physics);
+
+        for i in 0..player.weapons.len() {
+            match &mut player.weapons[i] {
+                PlayerWeapon::Turbofish(fish) => {
+                    if fish.is_touching(physics, self.handle()) {
+                        let explode_sound = asset_manager.get_sound("Some(explode).mp3");
+
+                        // FIXME
+                        particles.push(ParticleSystem::new(
+                            physics,
+                            100,
+                            na::Point2::new(
+                                position.x - (barrel.width() / 2) as f32,
+                                position.y - (barrel.height() / 2) as f32,
+                            ),
+                            na::Point2::new(
+                                position.x + (barrel.width() / 2) as f32,
+                                position.y + (barrel.height() / 2) as f32,
+                            ),
+                        ));
+
+                        play!(explode_sound);
+
+                        // Remove the enemy from the world
+                        self.destroy(physics);
+
+                        // Remove the weapon from the world
+                        fish.destroy(physics);
+                        player.weapons.remove(i);
+
+                        return true;
+                    }
+                }
+                PlayerWeapon::Grappling(_) => {}
+            }
+        }
+
+        false
     }
 
     pub fn position(&self, physics: &mut Physics) -> na::Point2<f32> {

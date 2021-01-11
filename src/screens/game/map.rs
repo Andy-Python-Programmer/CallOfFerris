@@ -1,3 +1,19 @@
+//! Helper struct that helps to parse .map files made only for Call of Ferris
+//!
+//! # Map
+//! `[` => Create left tile \
+//! `-` => Create center tile \
+//! `]` => Create right tile \
+//! `_` => Increase draw x by 100.0 \
+//! `8` => Push a tile with a enemy \
+//! `4` => Create a tile with the player \
+//! `*` => Create a tile with a barrel \
+//!
+//! # Setter Syntax
+//! `.comment` => A comment \
+//! `.using_weapon` => Set the current weapon \
+//! `.end` => The end quote displayed on the win screen
+
 use crate::{
     game::components::{
         barrel::Barrel,
@@ -25,7 +41,9 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn parse(map: String, physics: &mut Physics, asset_manager: &AssetManager) -> Self {
+    pub fn parse(map_id: &str, physics: &mut Physics, asset_manager: &AssetManager) -> Self {
+        let map = asset_manager.get_file(format!("/maps/{}.map", map_id).as_str());
+
         let mut draw_pos = 0.;
 
         #[allow(unused_assignments)]

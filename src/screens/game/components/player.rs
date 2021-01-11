@@ -27,9 +27,13 @@ pub struct Player {
     direction: Direction,
 
     body: DefaultBodyHandle,
+    pub weapons: Vec<PlayerWeapon>,
 }
 
 impl Player {
+    const SHIFT_JUICE: f32 = 10.0;
+    const JUMP_JUICE: f32 = 20.0;
+
     pub fn new(pos_x: f32, physics: &mut Physics, asset_manager: &AssetManager) -> Self {
         let ferris = asset_manager.get_image("Some(ferris).png");
 
@@ -39,6 +43,8 @@ impl Player {
             ferris.height(),
         );
 
+        let weapons = vec![];
+
         Self {
             ammo: 10.0,
             health: 100,
@@ -46,6 +52,7 @@ impl Player {
             direction: Direction::None,
 
             body,
+            weapons,
         }
     }
 
@@ -67,6 +74,7 @@ impl Player {
         let ferris_position =
             camera.calculate_dest_point(Vec2::new(player_position.x, player_position.y));
 
+        // Draw the player
         graphics::draw(
             ctx,
             &ferris,
@@ -86,6 +94,18 @@ impl Player {
                 .offset(Point2::new(0.5, 0.5)),
         )?;
 
+        // Draw the player weapon
+        for weapon in &mut self.weapons {
+            match weapon {
+                PlayerWeapon::Turbofish(fish) => {
+                    fish.draw(ctx, camera, physics, asset_manager)?;
+                }
+                PlayerWeapon::Grappling(grapple) => {
+                    grapple.draw(ctx, camera, physics)?;
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -101,10 +121,10 @@ impl Player {
 
     pub fn update(&mut self, ctx: &mut Context, physics: &mut Physics) {
         if keyboard::is_key_pressed(ctx, KeyCode::Left) {
-            self.move_x(physics, Direction::Left);
+            self.shift(physics, Direction::Left);
             self.set_direction(Direction::Left);
         } else if keyboard::is_key_pressed(ctx, KeyCode::Right) {
-            self.move_x(physics, Direction::Right);
+            self.shift(physics, Direction::Right);
             self.set_direction(Direction::Right);
         }
 
@@ -117,6 +137,29 @@ impl Player {
         // Same as the previous if statement. We want to shoot while moving and jumping around :)
         if keyboard::is_key_pressed(ctx, KeyCode::S) {
             // TODO: Move the shoot logic from game struct to this if statement
+        }
+
+        for i in 0..self.weapons.len() {
+            let weapon = &mut self.weapons[i];
+
+            match weapon {
+                PlayerWeapon::Turbofish(fish) => {
+                    if fish.update(physics) {
+                        fish.destroy(physics);
+                        self.weapons.remove(i);
+
+                        break;
+                    }
+                }
+                PlayerWeapon::Grappling(grapple) => {
+                    if keyboard::is_key_pressed(ctx, KeyCode::S) {
+                        grapple.update(physics);
+                    } else {
+                        self.weapons.remove(i);
+                        break;
+                    }
+                }
+            }
         }
     }
 
@@ -169,21 +212,27 @@ impl Player {
         let player_velocity = player_body.velocity();
 
         let new_velocity = Velocity2::new(
-            na::Vector2::new(player_velocity.linear.x, player_velocity.linear.y - 20.0),
+            na::Vector2::new(
+                player_velocity.linear.x,
+                player_velocity.linear.y - Self::JUMP_JUICE,
+            ),
             player_velocity.angular,
         );
 
         player_body.set_velocity(new_velocity);
     }
 
-    fn move_x(&mut self, physics: &mut Physics, direction: Direction) {
+    fn shift(&mut self, physics: &mut Physics, direction: Direction) {
         let player_body = physics.get_rigid_body_mut(self.body);
         let player_velocity = player_body.velocity();
 
         match direction {
             Direction::Left => {
                 let new_velocity = Velocity2::new(
-                    na::Vector2::new(player_velocity.linear.x - 10.0, player_velocity.linear.y),
+                    na::Vector2::new(
+                        player_velocity.linear.x - Self::SHIFT_JUICE,
+                        player_velocity.linear.y,
+                    ),
                     player_velocity.angular,
                 );
 
@@ -191,14 +240,17 @@ impl Player {
             }
             Direction::Right => {
                 let new_velocity = Velocity2::new(
-                    na::Vector2::new(player_velocity.linear.x + 10.0, player_velocity.linear.y),
+                    na::Vector2::new(
+                        player_velocity.linear.x + Self::SHIFT_JUICE,
+                        player_velocity.linear.y,
+                    ),
                     player_velocity.angular,
                 );
 
                 player_body.set_velocity(new_velocity);
             }
             Direction::None => {
-                panic!("Direction::None direction was passed in the Player::move_x() function where None value of the Direction enum was not expected. Panic!!");
+                panic!("Direction::None direction was passed in the Player::move_x() function where None value of the Direction enum was not expected. Panic!");
             }
         }
     }

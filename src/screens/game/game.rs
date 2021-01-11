@@ -1,20 +1,15 @@
-use std::{collections::HashMap, io::Read, process::exit, rc::Rc, sync::Mutex};
+use std::{collections::HashMap, process::exit, rc::Rc, sync::Mutex};
 
 use ggez::{
     audio::SoundSource,
     event::KeyCode,
     graphics::{self, Color, DrawParam, Drawable, Shader, Text},
-    input::keyboard,
     mint,
     nalgebra::Point2,
     timer, Context, GameResult,
 };
-use ggez_goodies::{
-    camera::{Camera, CameraDraw},
-    nalgebra_glm::Vec2,
-    particle::{EmissionShape, ParticleSystem, ParticleSystemBuilder, Transition},
-};
-use graphics::{Font, GlBackendSpec, Scale, ShaderGeneric, TextFragment};
+use ggez_goodies::{camera::Camera, nalgebra_glm::Vec2};
+use graphics::{GlBackendSpec, Scale, ShaderGeneric, TextFragment};
 use mint::Vector2;
 use rand::Rng;
 
@@ -26,7 +21,8 @@ use crate::{
     },
     game::map::Map,
     game::physics::Physics,
-    utils::{lerp, remap, AssetManager},
+    play,
+    utils::{lerp, remap, AssetManager, ParticleSystem},
     Screen, HEIGHT, WIDTH,
 };
 
@@ -39,22 +35,22 @@ gfx_defines! {
 }
 
 pub struct Game {
+    /// The game map.
     map: Map,
+    /// Physics system for the game.
     physics: Physics,
+    /// Camera to see the world.
+    camera: Camera,
 
+    // TODO: Refactor the rest of the fields
     clouds: Vec<Cloud>,
 
-    player_bullets: Vec<PlayerWeapon>,
-
+    /// Reference to the asset manager.
     asset_manager: Rc<AssetManager>,
-
-    consolas: Font,
-
-    camera: Camera,
 
     elapsed_shake: Option<(f32, Vec2, f32)>,
     tics: Option<i32>,
-    particles: Vec<(ParticleSystem, f32, f32, i32)>,
+    particles: Vec<ParticleSystem>,
     ui_lerp: HashMap<String, f32>,
 
     dim_shader: ShaderGeneric<GlBackendSpec, Dim>,
@@ -67,15 +63,11 @@ pub struct Game {
 impl Game {
     pub fn create(ctx: &mut Context, asset_manager: Rc<AssetManager>) -> Mutex<Self> {
         let mut camera = Camera::new(WIDTH as u32, HEIGHT as u32, WIDTH, HEIGHT);
-        let mut map = ggez::filesystem::open(ctx, "/maps/01.map").unwrap();
 
         let mut rng = rand::thread_rng();
 
-        let mut buffer = String::new();
-        map.read_to_string(&mut buffer).unwrap();
-
         let mut physics = Physics::new();
-        let mut map = Map::parse(buffer, &mut physics, &asset_manager);
+        let mut map = Map::parse("01", &mut physics, &asset_manager);
 
         let mut clouds = vec![];
 
@@ -110,7 +102,6 @@ impl Game {
                 rng.gen_range(10., 40.),
                 rng.gen_range(0.1, 0.3),
                 rng.gen_range(10., 35.),
-                &asset_manager,
             ));
         }
 
@@ -122,11 +113,7 @@ impl Game {
 
             asset_manager,
 
-            player_bullets: vec![],
-
             camera,
-
-            consolas: graphics::Font::new(ctx, "/fonts/Consolas.ttf").unwrap(),
 
             elapsed_shake: None,
             tics: None,
@@ -141,6 +128,8 @@ impl Game {
     }
 
     pub fn draw(&mut self, ctx: &mut Context) -> GameResult<Option<Screen>> {
+        let consolas = self.asset_manager.get_font("Consolas.ttf");
+
         if let Some(_t) = self.tics {
             {
                 let _lock = graphics::use_shader(ctx, &self.dim_shader);
@@ -154,7 +143,7 @@ impl Game {
                 // You Win
                 let end_frag = &Text::new(
                     TextFragment::new("You Win!")
-                        .font(self.consolas)
+                        .font(consolas)
                         .scale(Scale::uniform(50.)),
                 );
 
@@ -178,7 +167,7 @@ impl Game {
                     .split("\\n")
                     .collect::<Vec<_>>()
                 {
-                    let end_frag = &Text::new(TextFragment::new(line).font(self.consolas));
+                    let end_frag = &Text::new(TextFragment::new(line).font(consolas));
 
                     let end_dimensions = end_frag.dimensions(ctx);
 
@@ -210,11 +199,11 @@ impl Game {
                 let menu_rect_dim = menu_rect.dimensions(ctx).unwrap();
 
                 let menu_frag_to =
-                    &Text::new(TextFragment::new("Press & go to the").font(self.consolas));
+                    &Text::new(TextFragment::new("Press & go to the").font(consolas));
 
                 let menu_screen = &Text::new(
                     TextFragment::new("MENU SCREEN")
-                        .font(self.consolas)
+                        .font(consolas)
                         .scale(Scale::uniform(20.0)),
                 );
 
@@ -250,11 +239,11 @@ impl Game {
                     [36.0 / 255.0, 36.0 / 255.0, 36.0 / 255.0, 0.9].into(),
                 )?;
 
-                let quit_frag_to = &Text::new(TextFragment::new("Press * to").font(self.consolas));
+                let quit_frag_to = &Text::new(TextFragment::new("Press * to").font(consolas));
 
                 let press_quit = &Text::new(
                     TextFragment::new("QUIT")
-                        .font(self.consolas)
+                        .font(consolas)
                         .scale(Scale::uniform(20.)),
                 );
 
@@ -314,22 +303,9 @@ impl Game {
             .player
             .draw(ctx, &self.camera, &mut self.physics, &self.asset_manager)?;
 
-        // Player Bullets
-        for fish_ in &mut self.player_bullets {
-            match fish_ {
-                PlayerWeapon::Turbofish(fish) => {
-                    fish.draw(ctx, &self.camera, &mut self.physics, &self.asset_manager)?;
-                }
-                PlayerWeapon::Grappling(grapple) => {
-                    grapple.draw(ctx, &self.camera, &mut self.physics)?;
-                }
-            }
-        }
-
         // Particles
         for sys in &mut self.particles {
-            &sys.0
-                .draw_camera(&self.camera, ctx, Vec2::new(sys.1, sys.2), 0.);
+            sys.draw(ctx, &mut self.physics, &mut self.camera)?;
         }
 
         // User Profile, etc..
@@ -344,6 +320,8 @@ impl Game {
     fn draw_ui(&mut self, ctx: &mut Context) -> GameResult<()> {
         let profile = self.asset_manager.get_image("Some(profile).png");
         let fish = self.asset_manager.get_image("Some(fish).png");
+
+        let consolas = self.asset_manager.get_font("Consolas.ttf");
 
         graphics::draw(
             ctx,
@@ -426,7 +404,7 @@ impl Game {
                 self.map.enemies.len(),
                 self.map.total_enemies
             ))
-            .font(self.consolas)
+            .font(consolas)
             .scale(Scale::uniform(20.)),
         );
 
@@ -440,7 +418,7 @@ impl Game {
 
         let info = &Text::new(
             TextFragment::new(format!("Using {}", self.map.using.as_ref().unwrap().0))
-                .font(self.consolas)
+                .font(consolas)
                 .color([1.0, 1.0, 1.0, self.map.using.as_ref().unwrap().1].into()),
         );
 
@@ -474,12 +452,21 @@ impl Game {
         Ok(None)
     }
 
-    pub fn inner_update(&mut self, ctx: &mut Context) -> GameResult<Option<crate::Screen>> {
+    fn inner_update(&mut self, ctx: &mut Context) -> GameResult<Option<crate::Screen>> {
         // Take a time step in our physics world!
         self.physics.step();
 
         // Update our player
         self.map.player.update(ctx, &mut self.physics);
+        self.camera.move_to(Vec2::new(
+            self.map.player.position(&mut self.physics).x,
+            self.map.player.position(&mut self.physics).y,
+        ));
+
+        // Update our lovely clouds
+        for cloud in &mut self.clouds {
+            cloud.update(ctx);
+        }
 
         if self.map.enemies.len() == 0 {
             self.draw_end_text.3 = true;
@@ -502,78 +489,20 @@ impl Game {
             }
         }
 
-        self.camera.move_to(Vec2::new(
-            self.map.player.position(&mut self.physics).x,
-            self.map.player.position(&mut self.physics).y,
-        ));
-
-        if self.map.player.position(&mut self.physics).y > 800. {
-            if self.can_die {
-                return Ok(Some(Screen::Dead));
-            }
+        if self.map.player.position(&mut self.physics).y > HEIGHT && self.can_die {
+            return Ok(Some(Screen::Dead));
         }
 
-        for i in 0..self.map.enemies.len() {
-            let go = &mut self.map.enemies[i];
+        for id in 0..self.map.enemies.len() {
+            let enemy = &mut self.map.enemies[id];
 
-            go.update(&mut self.physics, &self.map.player);
-
-            let mut done: bool = false;
-
-            for j in 0..self.player_bullets.len() {
-                match &mut self.player_bullets[j] {
-                    PlayerWeapon::Turbofish(fish) => {
-                        if fish.is_touching(&mut self.physics, go.handle()) {
-                            let mut explode_sound = self
-                                .asset_manager
-                                .get_sound("Some(explode).mp3")
-                                .lock()
-                                .unwrap();
-
-                            self.particles.push((
-                                ParticleSystemBuilder::new(ctx)
-                                    .count(100)
-                                    .emission_rate(100.0)
-                                    .start_max_age(5.0)
-                                    .start_size_range(2.0, 15.0)
-                                    .start_color_range(
-                                        graphics::Color::from((0, 0, 0)),
-                                        graphics::Color::from((255, 255, 255)),
-                                    )
-                                    .delta_color(Transition::range(
-                                        ggez::graphics::Color::from((255, 0, 0)),
-                                        ggez::graphics::Color::from((255, 255, 0)),
-                                    ))
-                                    .emission_shape(EmissionShape::Circle(
-                                        mint::Point2 { x: 0.0, y: 0.0 },
-                                        100.0,
-                                    ))
-                                    .build(),
-                                go.position(&mut self.physics).x,
-                                go.position(&mut self.physics).y,
-                                0,
-                            ));
-
-                            explode_sound.play().expect("Cannot play Some(explode).mp3");
-
-                            // Remove the enemy from the world
-                            go.destroy(&mut self.physics);
-                            self.map.enemies.remove(i);
-
-                            // Remove the bullet from the world
-                            fish.destroy(&mut self.physics);
-                            self.player_bullets.remove(j);
-
-                            done = true;
-
-                            break;
-                        }
-                    }
-                    PlayerWeapon::Grappling(_grapple) => {}
-                }
-            }
-
-            if done {
+            if enemy.update(
+                &mut self.physics,
+                &self.asset_manager,
+                &mut self.particles,
+                &mut self.map.player,
+            ) {
+                self.map.enemies.remove(id);
                 let cam_loc = self.camera.location();
                 let org_pos = cam_loc.data.as_slice();
 
@@ -581,95 +510,22 @@ impl Game {
                 self.camera_shakeke();
 
                 break;
-            }
+            };
         }
 
-        for cloud in &mut self.clouds {
-            cloud.update(ctx, &self.asset_manager);
-        }
-
-        for i in 0..self.map.barrels.len() {
-            let mut done: bool = false;
-
-            for bullet in &mut self.player_bullets {
-                match bullet {
-                    PlayerWeapon::Turbofish(fish) => {
-                        let barrel = &self.map.barrels[i];
-
-                        if fish.is_touching(&mut self.physics, barrel.handle()) {
-                            let mut explode_sound = self
-                                .asset_manager
-                                .get_sound("Some(explode).mp3")
-                                .lock()
-                                .unwrap();
-
-                            self.particles.push((
-                                ParticleSystemBuilder::new(ctx)
-                                    .count(500)
-                                    .emission_rate(200.0)
-                                    .start_max_age(5.0)
-                                    .start_size_range(2.0, 15.0)
-                                    .delta_size(Transition::range(1., 2.))
-                                    .delta_color(Transition::range(
-                                        ggez::graphics::Color::from((255, 0, 0)),
-                                        ggez::graphics::Color::from((255, 255, 0)),
-                                    ))
-                                    .emission_shape(EmissionShape::Circle(
-                                        mint::Point2 { x: 0.0, y: 0.0 },
-                                        200.0,
-                                    ))
-                                    .build(),
-                                barrel.position(&mut self.physics).x,
-                                barrel.position(&mut self.physics).y,
-                                0,
-                            ));
-
-                            explode_sound.play().expect("Cannot play Some(explode).mp3");
-
-                            barrel.destroy(&mut self.physics);
-                            self.map.barrels.remove(i);
-
-                            done = true;
-
-                            break;
-                        }
-                    }
-                    PlayerWeapon::Grappling(_grapple) => {}
-                }
-            }
-
-            if done {
+        for id in 0..self.map.barrels.len() {
+            if self.map.barrels[id].update(
+                &mut self.physics,
+                &self.asset_manager,
+                &mut self.particles,
+                &mut self.map.player,
+            ) {
+                self.map.barrels.remove(id);
                 let cam_loc = self.camera.location();
                 let org_pos = cam_loc.data.as_slice();
 
                 self.elapsed_shake = Some((0., Vec2::new(org_pos[0], org_pos[1]), 5.));
                 self.camera_shakeke();
-
-                break;
-            }
-        }
-
-        for i in 0..self.player_bullets.len() {
-            let bullet = &mut self.player_bullets[i];
-
-            match bullet {
-                PlayerWeapon::Turbofish(fish) => {
-                    if fish.update(&mut self.physics) {
-                        fish.destroy(&mut self.physics);
-
-                        self.player_bullets.remove(i);
-
-                        break;
-                    }
-                }
-                PlayerWeapon::Grappling(grapple) => {
-                    if keyboard::is_key_pressed(ctx, KeyCode::S) {
-                        grapple.update(&mut self.physics);
-                    } else {
-                        self.player_bullets.remove(i);
-                        break;
-                    }
-                }
             }
         }
 
@@ -682,16 +538,11 @@ impl Game {
             }
         }
 
-        for sys in &mut self.particles {
-            sys.0.update(0.5);
-            sys.3 += 1;
-        }
+        for id in 0..self.particles.len() {
+            let sys = &mut self.particles[id];
 
-        for i in 0..self.particles.len() {
-            let sys = &self.particles[i];
-
-            if sys.3 > 6 {
-                self.particles.remove(i);
+            if sys.update(ctx, &mut self.physics) {
+                self.particles.remove(id);
 
                 break;
             }
@@ -727,27 +578,21 @@ impl Game {
         match keycode {
             KeyCode::S => {
                 let ui_lerp = self.ui_lerp.clone();
-                let mut turbofish_shoot = self
-                    .asset_manager
-                    .get_sound("Some(turbofish_shoot).mp3")
-                    .lock()
-                    .unwrap();
+                let turbofish_shoot = self.asset_manager.get_sound("Some(turbofish_shoot).mp3");
 
                 if let Some(bullet) =
                     self.map
                         .player
                         .shoot(&mut self.physics, &self.asset_manager, &self.map.weapon)
                 {
-                    turbofish_shoot
-                        .play()
-                        .expect("Cannot play Some(turbofish_shoot).mp3");
+                    play!(turbofish_shoot);
 
                     if let PlayerWeapon::Turbofish(_fish) = &bullet {
                         let cur_ammo = ui_lerp.get("ammo").unwrap();
                         self.ui_lerp.insert(String::from("ammo"), *cur_ammo - 1.);
                     }
 
-                    self.player_bullets.push(bullet);
+                    self.map.player.weapons.push(bullet);
                 }
             }
             KeyCode::Up => {
@@ -794,7 +639,7 @@ impl Game {
     }
 
     /// Give the camera a shakey shakey
-    pub fn camera_shakeke(&mut self) {
+    fn camera_shakeke(&mut self) {
         let mut rng = rand::thread_rng();
 
         let elapsed = self.elapsed_shake.unwrap();
