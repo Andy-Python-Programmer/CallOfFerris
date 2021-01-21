@@ -14,37 +14,13 @@ use ggez::{
 };
 use utils::AssetManager;
 
+mod screens;
 mod utils;
-
-mod screens {
-    pub mod menu {
-        pub mod menu;
-    }
-
-    pub mod game {
-        pub mod components {
-            pub mod barrel;
-            pub mod bullet;
-            pub mod cloud;
-            pub mod enemy;
-            pub mod player;
-            pub mod tile;
-        }
-
-        pub mod game;
-        pub mod map;
-        pub mod physics;
-    }
-
-    pub mod dead {
-        pub mod dead;
-    }
-}
 
 pub use screens::*;
 
-const WIDTH: f32 = 2000.0;
-const HEIGHT: f32 = 1000.0;
+const WIDTH: f32 = 1000.0;
+const HEIGHT: f32 = 600.0;
 
 fn load_assets(ctx: &mut Context) -> AssetManager {
     let mut asset_manager = AssetManager::new();
@@ -121,7 +97,7 @@ impl Game {
         let asset_manager = Rc::new(asset_manager);
 
         // Woah. We are cloning the asset manager. Yes thats why its wrapped in Rc<>
-        // and anything wrapped in a Rc<> and performs a clone only clones its pointer so its fine to use clone here!
+        // Anything wrapped in a Rc<> and performs a clone it only clones its pointer so its fine to use clone here!
         Self {
             screen: Screen::Menu,
 
