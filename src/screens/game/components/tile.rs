@@ -7,10 +7,7 @@ use nphysics2d::object::DefaultBodyHandle;
 use crate::{
     game::physics::{isometry_to_point, Physics},
     utils::AssetManager,
-    HEIGHT,
 };
-
-const HEIGHT2: f32 = HEIGHT / 2.;
 
 pub enum TileType {
     LEFT,
@@ -28,45 +25,48 @@ pub struct Tile {
 
 impl Tile {
     pub fn new(
+        ctx: &mut Context,
         pos_x: f32,
         physics: &mut Physics,
         asset_manager: &AssetManager,
         tile_type: TileType,
     ) -> Self {
-        let width;
-        let height;
+        let (_, height) = graphics::drawable_size(ctx);
 
-        let pos_y = HEIGHT2 - 64.0;
+        let tile_width;
+        let tile_height;
+
+        let pos_y = height / 2.0 - 64.0;
 
         match tile_type {
             TileType::LEFT => {
                 let ground_left = asset_manager.get_image("ground_left.png");
 
-                width = ground_left.width();
-                height = ground_left.height();
+                tile_width = ground_left.width();
+                tile_height = ground_left.height();
             }
             TileType::CENTER => {
                 let ground_centre = asset_manager.get_image("ground_centre.png");
 
-                width = ground_centre.width();
-                height = ground_centre.height();
+                tile_width = ground_centre.width();
+                tile_height = ground_centre.height();
             }
             TileType::RIGHT => {
                 let ground_right = asset_manager.get_image("ground_right.png");
 
-                width = ground_right.width();
-                height = ground_right.height();
+                tile_width = ground_right.width();
+                tile_height = ground_right.height();
             }
         }
 
-        let body = physics.create_tile(na::Point2::new(pos_x, pos_y), width, height);
+        let body = physics.create_tile(na::Point2::new(pos_x, pos_y), tile_width, tile_height);
 
         Self {
             tile_type,
             body,
 
-            width: width as f32,
-            height: height as f32,
+            width: tile_width as f32,
+            height: tile_height as f32,
         }
     }
 

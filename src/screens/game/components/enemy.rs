@@ -12,10 +12,7 @@ use crate::{
     game::physics::{isometry_to_point, Physics},
     play,
     utils::{AssetManager, ParticleSystem},
-    HEIGHT,
 };
-
-const HEIGHT2: f32 = HEIGHT / 2.;
 
 use super::{bullet::PlayerWeapon, player::Player};
 
@@ -24,11 +21,18 @@ pub struct Enemy {
 }
 
 impl Enemy {
-    pub fn new(pos_x: f32, physics: &mut Physics, asset_manager: &AssetManager) -> Self {
+    pub fn new(
+        ctx: &mut Context,
+        pos_x: f32,
+        physics: &mut Physics,
+        asset_manager: &AssetManager,
+    ) -> Self {
+        let (_, height) = graphics::drawable_size(ctx);
+
         let gopher = asset_manager.get_image("gopher.png");
 
         let body = physics.create_enemy(
-            na::Point2::new(pos_x, HEIGHT2 - 155.0),
+            na::Point2::new(pos_x, height / 2.0 - 155.0),
             gopher.width(),
             gopher.height(),
         );

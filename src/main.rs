@@ -7,49 +7,62 @@
 
 use std::{fs, rc::Rc, sync::Mutex};
 
-use ggez::{conf::WindowMode, event::KeyCode, event::KeyMods, Context, ContextBuilder, GameResult};
+use ggez::{
+    conf::WindowMode,
+    event::KeyCode,
+    event::KeyMods,
+    graphics::{set_screen_coordinates, Rect},
+    Context, ContextBuilder, GameResult,
+};
 use ggez::{
     conf::WindowSetup,
     event::{self, EventHandler},
 };
-use utils::AssetManager;
+use utils::{AssetManager, FerrisResult};
 
 mod screens;
 mod utils;
 
 pub use screens::*;
 
-const WIDTH: f32 = 1000.0;
-const HEIGHT: f32 = 600.0;
+/// Initial window width.
+const INIT_WIDTH: f32 = 1000.0;
+/// Initial window height.
+const INIT_HEIGHT: f32 = 600.0;
 
-fn load_assets(ctx: &mut Context) -> AssetManager {
+/// Minimum width.
+const MIN_WIDTH: f32 = 1000.0;
+/// Minimum height.
+const MIN_HEIGHT: f32 = 600.0;
+
+fn init_assets(ctx: &mut Context) -> FerrisResult<AssetManager> {
     let mut asset_manager = AssetManager::new();
 
-    let images_dir = fs::read_dir("./resources/images/").unwrap();
-    let fonts_dir = fs::read_dir("./resources/fonts/").unwrap();
-    let audio_dir = fs::read_dir("./resources/audio/").unwrap();
-    let maps_dir = fs::read_dir("./resources/maps/").unwrap();
+    let images_dir = fs::read_dir("./resources/images/")?;
+    let fonts_dir = fs::read_dir("./resources/fonts/")?;
+    let audio_dir = fs::read_dir("./resources/audio/")?;
+    let maps_dir = fs::read_dir("./resources/maps/")?;
 
     for image in images_dir {
-        asset_manager.load_image(ctx, image.unwrap().file_name().to_str().unwrap());
+        asset_manager.load_image(ctx, image?.file_name().to_string_lossy());
     }
 
     for font in fonts_dir {
-        asset_manager.load_font(ctx, font.unwrap().file_name().to_str().unwrap());
+        asset_manager.load_font(ctx, font?.file_name().to_string_lossy());
     }
 
     for audio in audio_dir {
-        asset_manager.load_sound(ctx, audio.unwrap().file_name().to_str().unwrap());
+        asset_manager.load_sound(ctx, audio?.file_name().to_string_lossy());
     }
 
     for map in maps_dir {
-        asset_manager.load_file(ctx, "maps", map.unwrap().file_name().to_str().unwrap());
+        asset_manager.load_file(ctx, "maps", map?.file_name().to_string_lossy());
     }
 
-    asset_manager
+    Ok(asset_manager)
 }
 
-fn main() -> GameResult<()> {
+fn main() -> FerrisResult<()> {
     // The resources directory contains all of the assets.
     // Including sprites and audio files.
     let resource_dir = std::path::PathBuf::from("./resources");
@@ -57,7 +70,12 @@ fn main() -> GameResult<()> {
     // Make a Context and an EventLoop.
     let (mut ctx, mut event_loop) = ContextBuilder::new("Call of Ferris", "Borrow Checker")
         .add_resource_path(resource_dir)
-        .window_mode(WindowMode::default().dimensions(WIDTH, HEIGHT))
+        .window_mode(
+            WindowMode::default()
+                .dimensions(INIT_WIDTH, INIT_HEIGHT)
+                .resizable(true)
+                .min_dimensions(MIN_WIDTH, MIN_HEIGHT),
+        )
         .window_setup(
             WindowSetup::default()
                 .title("Call of Ferris")
@@ -65,30 +83,47 @@ fn main() -> GameResult<()> {
         )
         .build()?;
 
-    let asset_manager = load_assets(&mut ctx);
+    let asset_manager = init_assets(&mut ctx)?;
 
     // Create an instance of your event handler.
     let mut game = Game::new(&mut ctx, asset_manager);
 
     // Run!
-    match event::run(&mut ctx, &mut event_loop, &mut game) {
-        Ok(_) => Ok(println!("Exited cleanly.")),
-        Err(e) => Ok(println!("Error occured: {}", e)),
+    let exit = event::run(&mut ctx, &mut event_loop, &mut game);
+
+    if exit.is_err() {
+        let error_message = format!(
+            "Call of Ferris encountered an unexpected internal error: {:?}",
+            exit,
+        );
+
+        Err(error_message.into())
+    } else {
+        Ok(())
     }
 }
 
+/// A enum specifying the current screen to show.
 pub enum Screen {
+    /// The menu screen.
     Menu,
+    /// The game screen.
     Play,
+    /// The death screen.
     Dead,
 }
 
+/// The current game state.
 pub struct Game {
+    /// The current screen,
     screen: Screen,
-    menu_screen: menu::menu::Menu,
-    game_screen: Mutex<game::game::Game>,
-    death_screen: dead::dead::Death,
-
+    /// Reference of the menu screen.
+    menu_screen: menu::Menu,
+    /// Mutable reference of the game screen.
+    game_screen: Mutex<game::Game>,
+    /// Reference of the death screen.
+    death_screen: dead::Death,
+    /// The asset manager.
     asset_manager: Rc<AssetManager>,
 }
 
@@ -101,9 +136,9 @@ impl Game {
         Self {
             screen: Screen::Menu,
 
-            menu_screen: menu::menu::Menu::create(ctx, asset_manager.clone()),
-            game_screen: game::game::Game::create(ctx, asset_manager.clone()),
-            death_screen: dead::dead::Death::spawn(ctx, asset_manager.clone()),
+            menu_screen: menu::Menu::create(ctx, asset_manager.clone()),
+            game_screen: game::Game::create(ctx, asset_manager.clone()),
+            death_screen: dead::Death::spawn(ctx, asset_manager.clone()),
 
             asset_manager,
         }
@@ -173,8 +208,7 @@ impl EventHandler for Game {
                 if let Some(s) = change {
                     match s {
                         Screen::Menu => {
-                            self.game_screen =
-                                game::game::Game::create(ctx, self.asset_manager.clone());
+                            self.game_screen = game::Game::create(ctx, self.asset_manager.clone());
                         }
 
                         _ => (),
@@ -185,5 +219,9 @@ impl EventHandler for Game {
             }
             Screen::Dead => {}
         }
+    }
+
+    fn resize_event(&mut self, ctx: &mut Context, width: f32, height: f32) {
+        set_screen_coordinates(ctx, Rect::new(0.0, 0.0, width, height)).unwrap();
     }
 }

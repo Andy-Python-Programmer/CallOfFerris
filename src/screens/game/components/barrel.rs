@@ -6,10 +6,7 @@ use crate::{
     game::physics::{isometry_to_point, Physics},
     play,
     utils::{AssetManager, ParticleSystem},
-    HEIGHT,
 };
-
-const HEIGHT2: f32 = HEIGHT / 2.;
 
 use nphysics2d::{nalgebra as na, object::DefaultBodyHandle};
 
@@ -20,11 +17,18 @@ pub struct Barrel {
 }
 
 impl Barrel {
-    pub fn new(pos_x: f32, physics: &mut Physics, asset_manager: &AssetManager) -> Self {
+    pub fn new(
+        ctx: &mut Context,
+        pos_x: f32,
+        physics: &mut Physics,
+        asset_manager: &AssetManager,
+    ) -> Self {
+        let (_, height) = graphics::drawable_size(ctx);
+
         let barrel = asset_manager.get_image("Some(barrel).png");
 
         let body = physics.create_barrel(
-            na::Point2::new(pos_x, HEIGHT2 - 155.0),
+            na::Point2::new(pos_x, height / 2.0 - 155.0),
             barrel.width(),
             barrel.height(),
         );

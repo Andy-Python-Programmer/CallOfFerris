@@ -7,10 +7,7 @@ use nphysics2d::{algebra::Velocity2, nalgebra as na};
 use crate::{
     game::physics::{isometry_to_point, point_to_isometry, Physics},
     utils::AssetManager,
-    HEIGHT,
 };
-
-const HEIGHT2: f32 = HEIGHT / 2.;
 
 use super::bullet::{Grappling, PlayerWeapon, Turbofish, WeaponType};
 
@@ -34,11 +31,18 @@ impl Player {
     const SHIFT_JUICE: f32 = 10.0;
     const JUMP_JUICE: f32 = 20.0;
 
-    pub fn new(pos_x: f32, physics: &mut Physics, asset_manager: &AssetManager) -> Self {
+    pub fn new(
+        ctx: &mut Context,
+        pos_x: f32,
+        physics: &mut Physics,
+        asset_manager: &AssetManager,
+    ) -> Self {
+        let (_, height) = graphics::drawable_size(ctx);
+
         let ferris = asset_manager.get_image("Some(ferris).png");
 
         let body = physics.create_player(
-            na::Point2::new(pos_x, HEIGHT2 - 155.),
+            na::Point2::new(pos_x, height / 2.0 - 155.),
             ferris.width(),
             ferris.height(),
         );

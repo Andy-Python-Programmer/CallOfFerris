@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Read, sync::Mutex};
+use std::{borrow::Cow, collections::HashMap, error::Error, io::Read, sync::Mutex};
 
 use ggez::{
     audio::Source,
@@ -19,6 +19,8 @@ use rand::Rng;
 
 use crate::game::physics::{isometry_to_point, point_to_isometry, ObjectData, Physics};
 
+pub type FerrisResult<T> = Result<T, Box<dyn Error>>;
+
 pub fn lerp(from: f32, to: f32, dt: f32) -> f32 {
     from + dt * (to - from)
 }
@@ -30,8 +32,13 @@ pub fn remap(n: f32, start1: f32, stop1: f32, start2: f32, stop2: f32) -> f32 {
 #[macro_export]
 macro_rules! play {
     ($exp:expr) => {
-        let mut sound = $exp.lock().unwrap();
-        sound.play().expect("Cannot play Some.mp3");
+        let mut sound = $exp
+            .lock()
+            .expect(format!("Cannot load {}.mp3", stringify!($exp)).as_str());
+
+        sound
+            .play()
+            .expect(format!("Cannot play {}.mp3", stringify!($exp)).as_str());
     };
 }
 
@@ -53,7 +60,7 @@ impl AssetManager {
         }
     }
 
-    pub fn load_image(&mut self, ctx: &mut Context, filename: &str) {
+    pub fn load_image(&mut self, ctx: &mut Context, filename: Cow<'_, str>) {
         self.assets.insert(
             filename.to_string(),
             Asset::Image(
@@ -63,7 +70,7 @@ impl AssetManager {
         );
     }
 
-    pub fn load_font(&mut self, ctx: &mut Context, filename: &str) {
+    pub fn load_font(&mut self, ctx: &mut Context, filename: Cow<'_, str>) {
         self.assets.insert(
             filename.to_string(),
             Asset::Font(
@@ -73,7 +80,7 @@ impl AssetManager {
         );
     }
 
-    pub fn load_sound(&mut self, ctx: &mut Context, filename: &str) {
+    pub fn load_sound(&mut self, ctx: &mut Context, filename: Cow<'_, str>) {
         self.assets.insert(
             filename.to_string(),
             Asset::Audio(Mutex::new(
@@ -83,7 +90,7 @@ impl AssetManager {
         );
     }
 
-    pub fn load_file(&mut self, ctx: &mut Context, folder: &str, filename: &str) {
+    pub fn load_file(&mut self, ctx: &mut Context, folder: &str, filename: Cow<'_, str>) {
         let path = format!("/{}/{}", folder, filename);
 
         let mut file = ggez::filesystem::open(ctx, &path).unwrap();

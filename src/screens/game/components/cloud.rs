@@ -5,7 +5,7 @@ use ggez::{
 };
 use graphics::DrawParam;
 
-use crate::{utils::AssetManager, WIDTH};
+use crate::utils::AssetManager;
 
 use nphysics2d::nalgebra as na;
 
@@ -48,11 +48,13 @@ impl Cloud {
     }
 
     pub fn update(&mut self, ctx: &mut Context) {
+        let (width, _) = graphics::drawable_size(ctx);
+
         let delta_time = ggez::timer::delta(ctx).as_secs_f32();
 
         self.position.x += delta_time * self.speed;
 
-        if self.position.x > WIDTH + 100. {
+        if self.position.x > width + 100. {
             self.position = na::Point2::new(-100., self.position.y);
         }
     }

@@ -1,4 +1,6 @@
-pub mod components;
-pub mod game;
-pub mod map;
+mod components;
+mod game;
+mod map;
 pub mod physics;
+
+pub use game::*;

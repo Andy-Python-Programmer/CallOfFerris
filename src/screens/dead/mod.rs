@@ -1,1 +1,3 @@
-pub mod dead;
+mod dead;
+
+pub use dead::*;

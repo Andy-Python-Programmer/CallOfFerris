@@ -46,7 +46,7 @@ impl ObjectData {
     pub fn get_particle_data(&self) -> Color {
         match *self {
             ObjectData::Particle(particle) => particle,
-            _ => panic!(),
+            _ => unreachable!(),
         }
     }
 }

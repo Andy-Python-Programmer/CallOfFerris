@@ -1,1 +1,3 @@
-pub mod menu;
+mod menu;
+
+pub use menu::*;

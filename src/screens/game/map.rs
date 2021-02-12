@@ -14,6 +14,8 @@
 //! `.using_weapon` => Set the current weapon \
 //! `.end` => The end quote displayed on the win screen
 
+use ggez::Context;
+
 use crate::{
     game::components::{
         barrel::Barrel,
@@ -41,7 +43,12 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn parse(map_id: &str, physics: &mut Physics, asset_manager: &AssetManager) -> Self {
+    pub fn parse(
+        ctx: &mut Context,
+        map_id: &str,
+        physics: &mut Physics,
+        asset_manager: &AssetManager,
+    ) -> Self {
         let map = asset_manager.get_file(format!("/maps/{}.map", map_id).as_str());
 
         let mut draw_pos = 0.;
@@ -82,7 +89,8 @@ impl Map {
                 for id in line.chars() {
                     match id {
                         '[' => {
-                            let tile = Tile::new(draw_pos, physics, asset_manager, TileType::LEFT);
+                            let tile =
+                                Tile::new(ctx, draw_pos, physics, asset_manager, TileType::LEFT);
 
                             draw_inc = (tile.dimensions().x / 2.0) + 32.0;
                             draw_pos += draw_inc;
@@ -92,7 +100,7 @@ impl Map {
 
                         '-' => {
                             let tile =
-                                Tile::new(draw_pos, physics, asset_manager, TileType::CENTER);
+                                Tile::new(ctx, draw_pos, physics, asset_manager, TileType::CENTER);
 
                             draw_inc = (tile.dimensions().x / 2.0) + 32.0;
                             draw_pos += draw_inc;
@@ -102,6 +110,7 @@ impl Map {
 
                         ']' => {
                             let tile = Tile::new(
+                                ctx,
                                 (draw_pos - 32.0) + 20.0,
                                 physics,
                                 asset_manager,
@@ -121,12 +130,12 @@ impl Map {
 
                         '8' => {
                             let tile =
-                                Tile::new(draw_pos, physics, asset_manager, TileType::CENTER);
+                                Tile::new(ctx, draw_pos, physics, asset_manager, TileType::CENTER);
 
                             draw_inc = (tile.dimensions().x / 2.0) + 32.0;
 
                             ground.push(tile);
-                            enemies.push(Enemy::new(draw_pos, physics, asset_manager));
+                            enemies.push(Enemy::new(ctx, draw_pos, physics, asset_manager));
 
                             draw_pos += draw_inc;
                             total_enemies += 1;
@@ -134,9 +143,9 @@ impl Map {
 
                         '4' => {
                             let tile =
-                                Tile::new(draw_pos, physics, asset_manager, TileType::CENTER);
+                                Tile::new(ctx, draw_pos, physics, asset_manager, TileType::CENTER);
 
-                            player = Some(Player::new(draw_pos, physics, asset_manager));
+                            player = Some(Player::new(ctx, draw_pos, physics, asset_manager));
 
                             draw_inc = tile.dimensions().x;
                             draw_pos += draw_inc;
@@ -146,12 +155,12 @@ impl Map {
 
                         '*' => {
                             let tile =
-                                Tile::new(draw_pos, physics, asset_manager, TileType::CENTER);
+                                Tile::new(ctx, draw_pos, physics, asset_manager, TileType::CENTER);
 
                             draw_inc = tile.dimensions().x;
 
                             ground.push(tile);
-                            barrels.push(Barrel::new(draw_pos, physics, asset_manager));
+                            barrels.push(Barrel::new(ctx, draw_pos, physics, asset_manager));
 
                             draw_pos += draw_inc;
                         }

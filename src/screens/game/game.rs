@@ -23,7 +23,7 @@ use crate::{
     game::physics::Physics,
     play,
     utils::{lerp, remap, AssetManager, ParticleSystem},
-    Screen, HEIGHT, WIDTH,
+    Screen,
 };
 
 use gfx::*;
@@ -62,12 +62,14 @@ pub struct Game {
 
 impl Game {
     pub fn create(ctx: &mut Context, asset_manager: Rc<AssetManager>) -> Mutex<Self> {
-        let mut camera = Camera::new(WIDTH as u32, HEIGHT as u32, WIDTH, HEIGHT);
+        let (width, height) = graphics::drawable_size(ctx);
+
+        let mut camera = Camera::new(width as u32, height as u32, width, height);
 
         let mut rng = rand::thread_rng();
 
         let mut physics = Physics::new();
-        let mut map = Map::parse("01", &mut physics, &asset_manager);
+        let mut map = Map::parse(ctx, "01", &mut physics, &asset_manager);
 
         let mut clouds = vec![];
 
@@ -98,7 +100,7 @@ impl Game {
 
         for _ in 0..rng.gen_range(5, 7) {
             clouds.push(Cloud::new(
-                rng.gen_range(0., WIDTH),
+                rng.gen_range(0., width),
                 rng.gen_range(10., 40.),
                 rng.gen_range(0.1, 0.3),
                 rng.gen_range(10., 35.),
@@ -128,6 +130,8 @@ impl Game {
     }
 
     pub fn draw(&mut self, ctx: &mut Context) -> GameResult<Option<Screen>> {
+        let (width, height) = graphics::drawable_size(ctx);
+
         let consolas = self.asset_manager.get_font("Consolas.ttf");
 
         if let Some(_t) = self.tics {
@@ -153,7 +157,7 @@ impl Game {
                     ctx,
                     end_frag,
                     DrawParam::default().dest(Point2::new(
-                        (WIDTH / 2.0) - (end_dimensions.0 / 2) as f32,
+                        (width / 2.0) - (end_dimensions.0 / 2) as f32,
                         50.0,
                     )),
                 )?;
@@ -175,8 +179,8 @@ impl Game {
                         ctx,
                         end_frag,
                         DrawParam::default().dest(Point2::new(
-                            (WIDTH / 2.0) - (end_dimensions.0 / 2) as f32,
-                            HEIGHT / 2. + draw_pos,
+                            (width / 2.0) - (end_dimensions.0 / 2) as f32,
+                            height / 2. + draw_pos,
                         )),
                     )?;
 
@@ -188,8 +192,8 @@ impl Game {
                     ctx,
                     graphics::DrawMode::fill(),
                     graphics::Rect::new(
-                        (WIDTH / 2.) + 20.,
-                        (HEIGHT / 2.) + (draw_pos * 2.),
+                        (width / 2.) + 20.,
+                        (height / 2.) + (draw_pos * 2.),
                         220.0,
                         40.0,
                     ),
@@ -212,8 +216,8 @@ impl Game {
                     ctx,
                     menu_frag_to,
                     DrawParam::default().dest(Point2::new(
-                        (WIDTH / 2.) + 20.,
-                        ((HEIGHT / 2.) + (draw_pos * 2.)) - 20.0,
+                        (width / 2.) + 20.,
+                        ((height / 2.) + (draw_pos * 2.)) - 20.0,
                     )),
                 )?;
 
@@ -221,8 +225,8 @@ impl Game {
                     ctx,
                     menu_screen,
                     DrawParam::default().dest(Point2::new(
-                        (WIDTH / 2.) + 70.,
-                        ((HEIGHT / 2.) + (draw_pos * 2.)) + 12.0,
+                        (width / 2.) + 70.,
+                        ((height / 2.) + (draw_pos * 2.)) + 12.0,
                     )),
                 )?;
 
@@ -231,8 +235,8 @@ impl Game {
                     ctx,
                     graphics::DrawMode::fill(),
                     graphics::Rect::new(
-                        ((WIDTH / 2.) - menu_rect_dim.w) - 20.0,
-                        (HEIGHT / 2.) + (draw_pos * 2.),
+                        ((width / 2.) - menu_rect_dim.w) - 20.0,
+                        (height / 2.) + (draw_pos * 2.),
                         220.0,
                         40.0,
                     ),
@@ -252,8 +256,8 @@ impl Game {
                     ctx,
                     quit_frag_to,
                     DrawParam::default().dest(Point2::new(
-                        ((WIDTH / 2.) - menu_rect_dim.w) - 20.,
-                        ((HEIGHT / 2.) + (draw_pos * 2.)) - 20.,
+                        ((width / 2.) - menu_rect_dim.w) - 20.,
+                        ((height / 2.) + (draw_pos * 2.)) - 20.,
                     )),
                 )?;
 
@@ -261,8 +265,8 @@ impl Game {
                     ctx,
                     press_quit,
                     DrawParam::default().dest(Point2::new(
-                        (((WIDTH / 2.) - menu_rect_dim.w) - 20.) + 90.,
-                        (((HEIGHT / 2.) + (draw_pos * 2.)) - 20.) + 30.,
+                        (((width / 2.) - menu_rect_dim.w) - 20.) + 90.,
+                        (((height / 2.) + (draw_pos * 2.)) - 20.) + 30.,
                     )),
                 )?;
             }
@@ -318,6 +322,8 @@ impl Game {
     }
 
     fn draw_ui(&mut self, ctx: &mut Context) -> GameResult<()> {
+        let (width, _) = graphics::drawable_size(ctx);
+
         let profile = self.asset_manager.get_image("Some(profile).png");
         let fish = self.asset_manager.get_image("Some(fish).png");
 
@@ -413,7 +419,7 @@ impl Game {
         graphics::draw(
             ctx,
             evildoers,
-            DrawParam::default().dest(Point2::new((WIDTH - evildoers_dim.0 as f32) - 40., 20.)),
+            DrawParam::default().dest(Point2::new((width - evildoers_dim.0 as f32) - 40., 20.)),
         )?;
 
         let info = &Text::new(
@@ -427,7 +433,7 @@ impl Game {
         graphics::draw(
             ctx,
             info,
-            DrawParam::default().dest(Point2::new((WIDTH / 2.) - (info_dim.0 / 2) as f32, 150.)),
+            DrawParam::default().dest(Point2::new((width / 2.) - (info_dim.0 / 2) as f32, 150.)),
         )?;
 
         Ok(())
@@ -453,6 +459,8 @@ impl Game {
     }
 
     fn inner_update(&mut self, ctx: &mut Context) -> GameResult<Option<crate::Screen>> {
+        let (_, height) = graphics::drawable_size(ctx);
+
         // Take a time step in our physics world!
         self.physics.step();
 
@@ -489,7 +497,7 @@ impl Game {
             }
         }
 
-        if self.map.player.position(&mut self.physics).y > HEIGHT && self.can_die {
+        if self.map.player.position(&mut self.physics).y > height && self.can_die {
             return Ok(Some(Screen::Dead));
         }
 
@@ -638,7 +646,7 @@ impl Game {
         self.map.player.set_direction(Direction::None);
     }
 
-    /// Give the camera a shakey shakey
+    /// Give the camera a shakey shakey.
     fn camera_shakeke(&mut self) {
         let mut rng = rand::thread_rng();
 

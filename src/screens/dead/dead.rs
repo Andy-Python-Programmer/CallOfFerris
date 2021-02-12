@@ -8,7 +8,7 @@ use ggez::{
 };
 use graphics::DrawParam;
 
-use crate::{utils::AssetManager, WIDTH};
+use crate::utils::AssetManager;
 
 pub struct Death {
     asset_manager: Rc<AssetManager>,
@@ -20,6 +20,8 @@ impl Death {
     }
 
     pub fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
+        let (width, _) = graphics::drawable_size(ctx);
+
         graphics::clear(ctx, graphics::BLACK);
 
         let consolas = self.asset_manager.get_font("Consolas.ttf");
@@ -63,37 +65,37 @@ impl Death {
         graphics::draw(
             ctx,
             &dead,
-            DrawParam::default().dest(Point2::new((WIDTH / 2.0) - 60.0, 40.0)),
+            DrawParam::default().dest(Point2::new((width / 2.0) - 60.0, 40.0)),
         )?;
 
         graphics::draw(
             ctx,
             &unsafe_dead,
-            DrawParam::default().dest(Point2::new((WIDTH / 2.0) - 200.0, 200.0)),
+            DrawParam::default().dest(Point2::new((width / 2.0) - 200.0, 200.0)),
         )?;
 
         graphics::draw(
             ctx,
             &unsafe_dead_block_start,
-            DrawParam::default().dest(Point2::new((WIDTH / 2.0) - 90.0, 200.0)),
+            DrawParam::default().dest(Point2::new((width / 2.0) - 90.0, 200.0)),
         )?;
 
         graphics::draw(
             ctx,
             &unsafe_dead_block_func,
-            DrawParam::default().dest(Point2::new((WIDTH / 2.0) - 125.0, 260.0)),
+            DrawParam::default().dest(Point2::new((width / 2.0) - 125.0, 260.0)),
         )?;
 
         graphics::draw(
             ctx,
             &unsafe_dead_block_end,
-            DrawParam::default().dest(Point2::new((WIDTH / 2.0) - 200.0, 300.0)),
+            DrawParam::default().dest(Point2::new((width / 2.0) - 200.0, 300.0)),
         )?;
 
         graphics::draw(
             ctx,
             &ferris_planet,
-            DrawParam::default().dest(Point2::new((WIDTH / 2.0) - 10.0, 240.0)),
+            DrawParam::default().dest(Point2::new((width / 2.0) - 10.0, 240.0)),
         )?;
 
         graphics::present(ctx)
