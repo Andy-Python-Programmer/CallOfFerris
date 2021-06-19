@@ -39,7 +39,7 @@ impl ValueGenerator<f32> {
             ValueGenerator::Fixed(x) => x,
             ValueGenerator::UniformRange(ref low, ref high) => {
                 let mut rng = rand::thread_rng();
-                rng.gen_range(*low, *high)
+                rng.gen_range(*low..=*high)
             }
         }
     }
@@ -53,8 +53,8 @@ impl ValueGenerator<Vector2<f32>> {
             ValueGenerator::Fixed(x) => x,
             ValueGenerator::UniformRange(low, high) => {
                 let mut rng = rand::thread_rng();
-                let x = rng.gen_range(low.x, high.x);
-                let y = rng.gen_range(low.y, high.y);
+                let x = rng.gen_range(low.x..=high.x);
+                let y = rng.gen_range(low.y..=high.y);
                 Vector2 { x, y }
             }
         }
@@ -67,8 +67,8 @@ impl ValueGenerator<Point2<f32>> {
             ValueGenerator::Fixed(x) => x,
             ValueGenerator::UniformRange(low, high) => {
                 let mut rng = rand::thread_rng();
-                let x = rng.gen_range(low.x, high.x);
-                let y = rng.gen_range(low.y, high.y);
+                let x = rng.gen_range(low.x..=high.x);
+                let y = rng.gen_range(low.y..=high.y);
                 Point2 { x, y }
             }
         }
@@ -83,9 +83,9 @@ impl ValueGenerator<graphics::Color> {
                 let mut rng = rand::thread_rng();
                 let (lowr, lowg, lowb) = low.into();
                 let (hir, hig, hib) = high.into();
-                let r = rng.gen_range(lowr, hir);
-                let g = rng.gen_range(lowg, hig);
-                let b = rng.gen_range(lowb, hib);
+                let r = rng.gen_range(lowr..=hir);
+                let g = rng.gen_range(lowg..=hig);
+                let b = rng.gen_range(lowb..=hib);
                 (r, g, b).into()
             }
         }
@@ -412,17 +412,17 @@ impl EmissionShape {
                 if min_x == max_x {
                     // Line is vertical
                     x = min_x;
-                    y = rng.gen_range(min_y, max_y);
+                    y = rng.gen_range(min_y..=max_y);
                 } else if min_y == max_y {
                     // Line is horizontal
                     y = max_y;
-                    x = rng.gen_range(min_x, max_x)
+                    x = rng.gen_range(min_x..=max_x)
                 } else {
                     // Line is sloped.
                     let dy = max_y - min_y;
                     let dx = max_x - min_x;
                     let slope = dy / dx;
-                    x = rng.gen_range(min_x, max_x);
+                    x = rng.gen_range(min_x..=max_x);
                     y = (slope * (x - min_x)) + min_y;
                 }
 
@@ -443,8 +443,8 @@ impl EmissionShape {
             }
             EmissionShape::Circle(center, radius) => {
                 let mut rng = rand::thread_rng();
-                let theta = rng.gen_range(0.0, f32::consts::PI * 2.0);
-                let r = rng.gen_range(0.0, radius);
+                let theta = rng.gen_range(0.0..=f32::consts::PI * 2.0);
+                let r = rng.gen_range(0.0..=radius);
                 let x = theta.cos() * r;
                 let y = theta.sin() * r;
                 Point2 {
