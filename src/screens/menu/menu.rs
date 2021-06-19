@@ -145,6 +145,6 @@ impl Menu {
             exit(0);
         }
 
-        return None;
+        None
     }
 }

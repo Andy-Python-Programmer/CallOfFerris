@@ -116,7 +116,7 @@ impl Grappling {
     ) -> Option<Self> {
         let ray_cast = physics.ray_cast(na::Point2::new(pos_x, pos_y), na::Vector2::new(1.0, 1.0));
 
-        if ray_cast.len() > 0 {
+        if !ray_cast.is_empty() {
             for object in ray_cast {
                 if object.0 == ObjectData::Barrel {
                     let body = object.1.body();

@@ -192,11 +192,7 @@ impl Player {
                         self.handle(),
                     );
 
-                    if let Some(grapple) = gun {
-                        Some(PlayerWeapon::Grappling(grapple))
-                    } else {
-                        None
-                    }
+                    gun.map(PlayerWeapon::Grappling)
                 }
             }
         } else {
