@@ -441,11 +441,9 @@ impl Game {
 
     pub fn update(&mut self, ctx: &mut Context) -> GameResult<Option<crate::Screen>> {
         if let Some(t) = self.tics {
-            if let Some(_) = self.tics {
-                if self.dim_constant.rate != 0.5 {
-                    self.dim_constant.rate = lerp(self.dim_constant.rate, 0.5, 0.1);
-                    self.dim_shader.send(ctx, self.dim_constant)?;
-                }
+            if self.tics.is_some() && self.dim_constant.rate != 0.5 {
+                self.dim_constant.rate = lerp(self.dim_constant.rate, 0.5, 0.1);
+                self.dim_shader.send(ctx, self.dim_constant)?;
             }
 
             if timer::ticks(ctx) % t as usize == 0 {
@@ -476,7 +474,7 @@ impl Game {
             cloud.update(ctx);
         }
 
-        if self.map.enemies.len() == 0 {
+        if self.map.enemies.is_empty() {
             self.draw_end_text.3 = true;
             self.can_die = false;
 
@@ -634,15 +632,10 @@ impl Game {
     }
 
     pub fn key_up_event(&mut self, keycode: KeyCode) {
-        match keycode {
-            KeyCode::Up => {
-                self.tics = None;
-                self.dim_constant.rate = 1.0;
-            }
-
-            _ => (),
+        if keycode == KeyCode::Up {
+            self.tics = None;
+            self.dim_constant.rate = 1.0;
         }
-
         self.map.player.set_direction(Direction::None);
     }
 

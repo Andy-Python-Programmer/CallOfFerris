@@ -10,9 +10,9 @@ use crate::{
 };
 
 pub enum TileType {
-    LEFT,
-    CENTER,
-    RIGHT,
+    Left,
+    Center,
+    Right,
 }
 
 pub struct Tile {
@@ -39,19 +39,19 @@ impl Tile {
         let pos_y = height / 2.0 - 64.0;
 
         match tile_type {
-            TileType::LEFT => {
+            TileType::Left => {
                 let ground_left = asset_manager.get_image("ground_left.png");
 
                 tile_width = ground_left.width();
                 tile_height = ground_left.height();
             }
-            TileType::CENTER => {
+            TileType::Center => {
                 let ground_centre = asset_manager.get_image("ground_centre.png");
 
                 tile_width = ground_centre.width();
                 tile_height = ground_centre.height();
             }
-            TileType::RIGHT => {
+            TileType::Right => {
                 let ground_right = asset_manager.get_image("ground_right.png");
 
                 tile_width = ground_right.width();
@@ -86,7 +86,7 @@ impl Tile {
             camera.calculate_dest_point(Vec2::new(ground_position.x, ground_position.y));
 
         match self.tile_type {
-            TileType::LEFT => {
+            TileType::Left => {
                 graphics::draw(
                     ctx,
                     &ground_left,
@@ -96,7 +96,7 @@ impl Tile {
                 )?;
             }
 
-            TileType::CENTER => {
+            TileType::Center => {
                 graphics::draw(
                     ctx,
                     &ground_centre,
@@ -105,7 +105,7 @@ impl Tile {
                         .offset(Point2::new(0.5, 0.5)),
                 )?;
             }
-            TileType::RIGHT => {
+            TileType::Right => {
                 graphics::draw(
                     ctx,
                     &ground_right,

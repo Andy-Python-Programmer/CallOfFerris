@@ -65,7 +65,7 @@ impl AssetManager {
             filename.to_string(),
             Asset::Image(
                 Image::new(ctx, format!("/images/{}", filename))
-                    .expect(format!("Cannot load {}", filename).as_str()),
+                    .unwrap_or_else(|_| panic!("Cannot load {}", filename)),
             ),
         );
     }
@@ -75,7 +75,7 @@ impl AssetManager {
             filename.to_string(),
             Asset::Font(
                 Font::new(ctx, format!("/fonts/{}", filename))
-                    .expect(format!("Cannot load {}", filename).as_str()),
+                    .unwrap_or_else(|_| panic!("Cannot load {}", filename)),
             ),
         );
     }
@@ -85,7 +85,7 @@ impl AssetManager {
             filename.to_string(),
             Asset::Audio(Mutex::new(
                 Source::new(ctx, format!("/audio/{}", filename))
-                    .expect(format!("Cannot load {}", filename).as_str()),
+                    .unwrap_or_else(|_| panic!("Cannot load {}", filename)),
             )),
         );
     }
@@ -103,36 +103,28 @@ impl AssetManager {
 
     pub fn get_image(&self, filename: &str) -> Image {
         match self.assets.get(&filename.to_string()).unwrap() {
-            Asset::Image(image) => {
-                return image.to_owned();
-            }
+            Asset::Image(image) => image.to_owned(),
             _ => panic!(),
         }
     }
 
     pub fn get_font(&self, filename: &str) -> Font {
         match self.assets.get(&filename.to_string()).unwrap() {
-            Asset::Font(font) => {
-                return font.to_owned();
-            }
+            Asset::Font(font) => font.to_owned(),
             _ => panic!(),
         }
     }
 
     pub fn get_sound(&self, filename: &str) -> &Mutex<Source> {
         match self.assets.get(&filename.to_string()).unwrap() {
-            Asset::Audio(audio) => {
-                return audio;
-            }
+            Asset::Audio(audio) => audio,
             _ => panic!(),
         }
     }
 
     pub fn get_file(&self, filename: &str) -> String {
         match self.assets.get(&filename.to_string()).unwrap() {
-            Asset::File(file) => {
-                return file.to_owned();
-            }
+            Asset::File(file) => file.to_owned(),
             _ => panic!(),
         }
     }

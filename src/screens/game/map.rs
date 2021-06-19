@@ -68,8 +68,8 @@ impl Map {
 
         let mut weapon = WeaponType::Turbofish;
 
-        for line in map.split("\n").collect::<Vec<_>>() {
-            let exp = line.split(" ").collect::<Vec<_>>();
+        for line in map.split('\n').collect::<Vec<_>>() {
+            let exp = line.split(' ').collect::<Vec<_>>();
 
             if exp[0].starts_with(".end") {
                 end = Some(exp[1..].join(" "));
@@ -90,7 +90,7 @@ impl Map {
                     match id {
                         '[' => {
                             let tile =
-                                Tile::new(ctx, draw_pos, physics, asset_manager, TileType::LEFT);
+                                Tile::new(ctx, draw_pos, physics, asset_manager, TileType::Left);
 
                             draw_inc = (tile.dimensions().x / 2.0) + 32.0;
                             draw_pos += draw_inc;
@@ -100,7 +100,7 @@ impl Map {
 
                         '-' => {
                             let tile =
-                                Tile::new(ctx, draw_pos, physics, asset_manager, TileType::CENTER);
+                                Tile::new(ctx, draw_pos, physics, asset_manager, TileType::Center);
 
                             draw_inc = (tile.dimensions().x / 2.0) + 32.0;
                             draw_pos += draw_inc;
@@ -114,7 +114,7 @@ impl Map {
                                 (draw_pos - 32.0) + 20.0,
                                 physics,
                                 asset_manager,
-                                TileType::RIGHT,
+                                TileType::Right,
                             );
 
                             draw_inc = (tile.dimensions().x / 2.0) + 32.0;
@@ -130,7 +130,7 @@ impl Map {
 
                         '8' => {
                             let tile =
-                                Tile::new(ctx, draw_pos, physics, asset_manager, TileType::CENTER);
+                                Tile::new(ctx, draw_pos, physics, asset_manager, TileType::Center);
 
                             draw_inc = (tile.dimensions().x / 2.0) + 32.0;
 
@@ -143,7 +143,7 @@ impl Map {
 
                         '4' => {
                             let tile =
-                                Tile::new(ctx, draw_pos, physics, asset_manager, TileType::CENTER);
+                                Tile::new(ctx, draw_pos, physics, asset_manager, TileType::Center);
 
                             player = Some(Player::new(ctx, draw_pos, physics, asset_manager));
 
@@ -155,7 +155,7 @@ impl Map {
 
                         '*' => {
                             let tile =
-                                Tile::new(ctx, draw_pos, physics, asset_manager, TileType::CENTER);
+                                Tile::new(ctx, draw_pos, physics, asset_manager, TileType::Center);
 
                             draw_inc = tile.dimensions().x;
 
@@ -176,14 +176,11 @@ impl Map {
         Self {
             ground,
             enemies,
-            total_enemies,
             barrels,
-
             player,
-
+            total_enemies,
             end,
             using,
-
             weapon,
         }
     }

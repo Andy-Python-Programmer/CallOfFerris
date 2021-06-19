@@ -181,9 +181,8 @@ impl EventHandler for Game {
     }
 
     fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods) {
-        match self.screen {
-            Screen::Play => self.game_screen.lock().unwrap().key_up_event(keycode),
-            _ => (),
+        if let Screen::Play = self.screen {
+            self.game_screen.lock().unwrap().key_up_event(keycode)
         }
     }
 
@@ -206,14 +205,9 @@ impl EventHandler for Game {
                 let change = self.game_screen.lock().unwrap().key_press(keycode);
 
                 if let Some(s) = change {
-                    match s {
-                        Screen::Menu => {
-                            self.game_screen = game::Game::create(ctx, self.asset_manager.clone());
-                        }
-
-                        _ => (),
+                    if let Screen::Menu = s {
+                        self.game_screen = game::Game::create(ctx, self.asset_manager.clone());
                     }
-
                     self.screen = s;
                 }
             }

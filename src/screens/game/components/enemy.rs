@@ -126,7 +126,7 @@ impl Enemy {
             // TODO: The enemy shoots the player as soon as it see's the player.
         }
 
-        return false;
+        false
     }
 
     pub fn position(&self, physics: &mut Physics) -> na::Point2<f32> {

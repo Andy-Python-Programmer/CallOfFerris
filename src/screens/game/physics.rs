@@ -81,8 +81,8 @@ impl Physics {
         let force_generator_set = nphysics2d::force_generator::DefaultForceGeneratorSet::new();
 
         Self {
-            geometrical_world,
             mechanical_world,
+            geometrical_world,
             body_set,
             collider_set,
             joint_constraint_set,
@@ -367,9 +367,9 @@ impl Physics {
         let pos_2 = self.collider_set.get(object2).unwrap();
 
         ncollide2d::query::distance(
-            &pos_1.position(),
+            pos_1.position(),
             pos_1.shape(),
-            &pos_2.position(),
+            pos_2.position(),
             pos_2.shape(),
         )
     }
