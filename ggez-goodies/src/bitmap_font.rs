@@ -40,7 +40,7 @@ impl TextMap {
                 x: x_offset,
                 y: y_offset,
                 w: rect_width,
-                h: rect_height;
+                h: rect_height
             };
             map.insert(c, char_rect);
             current_x = (current_x + 1) % width;

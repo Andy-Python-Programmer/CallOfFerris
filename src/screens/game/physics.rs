@@ -51,7 +51,7 @@ impl ObjectData {
     }
 }
 
-/// Helper physics struct that makes live's easier while using nphysics2d physics engine with ggez.
+/// Helper physics struct that makes lives easier while using nphysics2d physics engine with ggez.
 pub struct Physics {
     mechanical_world: world::DefaultMechanicalWorld<N>,
     geometrical_world: world::DefaultGeometricalWorld<N>,
@@ -62,7 +62,7 @@ pub struct Physics {
 }
 
 impl Physics {
-    // TODO: Move the seperate rigid body creator functions to use the create_rigid_body() and create_collider() functions indead.
+    // TODO: Move the separate rigid body creator functions to use the create_rigid_body() and create_collider() functions in dead.
 
     /// The amount of gravity for the Y axis in the physics world.
     const GRAVITY: N = 300.0;
@@ -235,7 +235,7 @@ impl Physics {
         barrel_handle
     }
 
-    /// Create a new bullet. Can be any included in crate::components::bullet::PlayerWepon enum
+    /// Create a new bullet. Can be any included in crate::components::bullet::PlayerWeapon enum
     pub fn create_bullet(
         &mut self,
         pos: na::Point2<f32>,

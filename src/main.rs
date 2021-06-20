@@ -131,8 +131,8 @@ impl Game {
     pub fn new(ctx: &mut Context, asset_manager: AssetManager) -> Self {
         let asset_manager = Rc::new(asset_manager);
 
-        // Woah. We are cloning the asset manager. Yes thats why its wrapped in Rc<>
-        // Anything wrapped in a Rc<> and performs a clone it only clones its pointer so its fine to use clone here!
+        // Woah. We are cloning the asset manager. Yes that's why it's wrapped in Rc<>
+        // Anything wrapped in a Rc<> and performs a clone it only clones its pointer, so it's fine to use clone here!
         Self {
             screen: Screen::Menu,
 
@@ -180,12 +180,6 @@ impl EventHandler for Game {
         }
     }
 
-    fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods) {
-        if let Screen::Play = self.screen {
-            self.game_screen.lock().unwrap().key_up_event(keycode)
-        }
-    }
-
     fn key_down_event(
         &mut self,
         ctx: &mut Context,
@@ -212,6 +206,12 @@ impl EventHandler for Game {
                 }
             }
             Screen::Dead => {}
+        }
+    }
+
+    fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods) {
+        if let Screen::Play = self.screen {
+            self.game_screen.lock().unwrap().key_up_event(keycode)
         }
     }
 
