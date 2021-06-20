@@ -123,7 +123,7 @@ impl Enemy {
 
         // Can the enemy see the player?
         if physics.distance(self.handle(), player.handle()) < 300.0 {
-            // TODO: The enemy shoots the player as soon as it see's the player.
+            // TODO: The enemy shoots the player as soon as it sees the player.
         }
 
         false

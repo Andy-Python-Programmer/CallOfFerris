@@ -13,7 +13,7 @@ A thrilling action game where your favorite Ferris the crab and the rust mascot 
 <img src="misc/dead.png">
 <img src="misc/gameplay-1.png">
 <img src="misc/gameplay-2.png">
-Call of Ferris also comes with super hot slow motion for great bullet time and accurecy
+Call of Ferris also comes with super hot slow motion for great bullet time and accuracy
 
 ## Thanks
 - @s-mv for almost all of the assets!
