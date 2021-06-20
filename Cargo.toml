@@ -15,8 +15,8 @@ debug = []
 
 [dependencies]
 ggez = "0.5"
-rand = "0.7"
+rand = "0.8"
 ggez-goodies = { path = "./ggez-goodies/" }
 gfx = "0.18.2"
-nphysics2d = "0.18.0"
-rapier2d = "0.5.0"
+nphysics2d = "0.22.0"
+rapier2d = "0.9.2"

@@ -98,12 +98,12 @@ impl Game {
             map.player.position(&mut physics).y,
         ));
 
-        for _ in 0..rng.gen_range(5, 7) {
+        for _ in 0..rng.gen_range(5..=7) {
             clouds.push(Cloud::new(
-                rng.gen_range(0., width),
-                rng.gen_range(10., 40.),
-                rng.gen_range(0.1, 0.3),
-                rng.gen_range(10., 35.),
+                rng.gen_range(0. ..=width),
+                rng.gen_range(10. ..=40.),
+                rng.gen_range(0.1..=0.3),
+                rng.gen_range(10. ..=35.),
             ));
         }
 
@@ -646,8 +646,8 @@ impl Game {
         let elapsed = self.elapsed_shake.unwrap();
         let magnitude = elapsed.2;
 
-        let x = rng.gen_range(-1.0, 1.0) * magnitude;
-        let y = rng.gen_range(-1.0, 1.0) * magnitude;
+        let x = rng.gen_range(-1.0..=1.0) * magnitude;
+        let y = rng.gen_range(-1.0..=1.0) * magnitude;
 
         self.camera.move_by(Vec2::new(x, y));
 

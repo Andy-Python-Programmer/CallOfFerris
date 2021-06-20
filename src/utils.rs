@@ -149,18 +149,18 @@ impl ParticleSystem {
 
         for _ in 0..amount {
             let position =
-                na::Point2::new(rng.gen_range(min.x, max.x), rng.gen_range(min.y, max.y));
+                na::Point2::new(rng.gen_range(min.x..=max.x), rng.gen_range(min.y..=max.y));
             let mut body = RigidBodyDesc::new()
                 .mass(0.1)
                 .position(point_to_isometry(position))
                 .build();
 
             body.set_velocity(Velocity2::linear(
-                rng.gen_range(-Self::PARTICLE_JUICE, Self::PARTICLE_JUICE),
-                rng.gen_range(-Self::PARTICLE_JUICE, Self::PARTICLE_JUICE),
+                rng.gen_range(-Self::PARTICLE_JUICE..=Self::PARTICLE_JUICE),
+                rng.gen_range(-Self::PARTICLE_JUICE..=Self::PARTICLE_JUICE),
             ));
 
-            let g = rng.gen_range(0, 255);
+            let g = rng.gen_range(0..=255);
 
             let handle = physics.create_rigid_body(body);
             let shape = ShapeHandle::new(Ball::new(2.0));
